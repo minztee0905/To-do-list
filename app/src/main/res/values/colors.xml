@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- System Colors -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- App Colors -->
+    <color name="primary_black">#000000</color>
+    <color name="background_dark">#000000</color>
+    <color name="card_dark">#1E1E1E</color>
+    <color name="text_white">#FFFFFF</color>
+    <color name="fab_orange">#FF8C42</color>
+    <color name="border_gray">#333333</color>
+    <color name="divider_color">#333333</color>
+    <color name="menu_highlight">#3D2817</color>
+</resources>
