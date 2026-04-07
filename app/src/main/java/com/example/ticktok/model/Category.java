@@ -5,13 +5,13 @@ public class Category {
     private final String id;
     private final String icon;
     private final String title;
-    private final boolean defaultItem;
+    private final int order;
 
-    public Category(String id, String icon, String title, boolean defaultItem) {
+    public Category(String id, String icon, String title, int order) {
         this.id = id;
         this.icon = icon;
         this.title = title;
-        this.defaultItem = defaultItem;
+        this.order = order;
     }
 
     public String getId() {
@@ -26,8 +26,8 @@ public class Category {
         return title;
     }
 
-    public boolean isDefaultItem() {
-        return defaultItem;
+    public int getOrder() {
+        return order;
     }
 }
 

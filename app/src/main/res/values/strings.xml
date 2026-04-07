@@ -48,4 +48,6 @@
     <string name="action_cancel">Hủy</string>
     <string name="error_empty_category">Tên danh mục không được để trống</string>
     <string name="error_duplicate_category">Danh mục đã tồn tại</string>
+    <string name="error_load_categories">Không thể tải danh mục từ Firebase</string>
+    <string name="menu_add_coming_soon">Tính năng thêm danh mục sẽ làm ở bước tiếp theo</string>
 </resources>

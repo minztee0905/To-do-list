@@ -1,5 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
+    // 1. Kích hoạt plugin Google Services
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -44,4 +46,10 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
+    // 2. Nhập Firebase BoM (giúp quản lý phiên bản các thư viện Firebase tự động)
+    implementation(platform("com.google.firebase:firebase-bom:34.11.0"))
+
+    // 3. Thêm các thư viện Firebase bạn muốn dùng (không cần ghi số phiên bản)
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-firestore")
 }

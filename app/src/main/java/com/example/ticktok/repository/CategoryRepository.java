@@ -1,131 +1,80 @@
 package com.example.ticktok.repository;
 
-import android.content.Context;
-import android.content.SharedPreferences;
+import androidx.annotation.NonNull;
 
-import com.example.ticktok.R;
 import com.example.ticktok.model.Category;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
-import java.util.Set;
 
 public class CategoryRepository {
 
-    private static final String PREF_NAME = "category_repo";
-    private static final String KEY_CUSTOM_CATEGORIES = "custom_categories";
+    private static final String COLLECTION_DEFAULT_CATEGORIES = "default_categories";
 
-    private final SharedPreferences prefs;
-    private final Context context;
+    private final FirebaseFirestore firestore;
 
-    public CategoryRepository(Context context) {
-        this.context = context.getApplicationContext();
-        this.prefs = this.context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+    public interface LoadCategoriesCallback {
+        void onLoaded(List<Category> categories);
+        void onError(Exception exception);
     }
 
-    public List<Category> getAllCategories() {
-        List<Category> categories = new ArrayList<>();
-        categories.add(new Category("today", "📚", context.getString(R.string.menu_today), true));
-        categories.add(new Category("inbox", "📬", context.getString(R.string.menu_inbox), true));
-        categories.add(new Category("game", "🎮", context.getString(R.string.menu_game), true));
-        categories.add(new Category("welcome", "👋", context.getString(R.string.menu_welcome), true));
-        categories.add(new Category("work", "💼", context.getString(R.string.menu_work), true));
-        categories.add(new Category("personal", "🏠", context.getString(R.string.menu_personal), true));
-        categories.add(new Category("shopping", "📦", context.getString(R.string.menu_shopping), true));
-        categories.add(new Category("learning", "📖", context.getString(R.string.menu_learning), true));
-        categories.add(new Category("wish_list", "🦄", context.getString(R.string.menu_wish_list), true));
-        categories.add(new Category("fitness", "🏃", context.getString(R.string.menu_fitness), true));
-
-        Set<String> customTitles = readCustomTitles();
-        int index = 0;
-        for (String title : customTitles) {
-            String id = "custom_" + index;
-            categories.add(new Category(id, "✨", title, false));
-            index++;
-        }
-        return categories;
+    public CategoryRepository() {
+        this.firestore = FirebaseFirestore.getInstance();
     }
 
-    public boolean addCustomCategory(String title) {
-        String normalized = normalize(title);
-        if (normalized.isEmpty() || isDefaultTitle(normalized)) {
-            return false;
-        }
+    public void getCategories(@NonNull LoadCategoriesCallback callback) {
+        firestore.collection(COLLECTION_DEFAULT_CATEGORIES)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    List<Category> categories = new ArrayList<>();
 
-        Set<String> titles = readCustomTitles();
-        for (String existing : titles) {
-            if (existing.equalsIgnoreCase(normalized)) {
-                return false;
+                    for (QueryDocumentSnapshot document : querySnapshot) {
+                        String id = safeString(document.getId(), "default");
+                        String title = safeString(document.getString("title"), "");
+                        String icon = safeString(document.getString("icon"), "✨");
+
+                        if (title.isEmpty()) {
+                            continue;
+                        }
+
+                        int order = parseOrder(document);
+                        categories.add(new Category(id, icon, title, order));
+                    }
+
+                    Collections.sort(categories, Comparator.comparingInt(Category::getOrder));
+                    callback.onLoaded(categories);
+                })
+                .addOnFailureListener(callback::onError);
+    }
+
+    private int parseOrder(QueryDocumentSnapshot document) {
+        String orderText = safeString(document.getString("order"), "");
+        if (!orderText.isEmpty()) {
+            try {
+                return Integer.parseInt(orderText);
+            } catch (NumberFormatException ignored) {
+                // Fall through to numeric fallback.
             }
         }
 
-        titles.add(normalized);
-        saveCustomTitles(titles);
-        return true;
-    }
-
-    private boolean isDefaultTitle(String title) {
-        List<Category> defaults = getAllDefaultCategories();
-        for (Category category : defaults) {
-            if (category.getTitle().toLowerCase(Locale.ROOT).equals(title.toLowerCase(Locale.ROOT))) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private List<Category> getAllDefaultCategories() {
-        List<Category> defaults = new ArrayList<>();
-        defaults.add(new Category("today", "📚", context.getString(R.string.menu_today), true));
-        defaults.add(new Category("inbox", "📬", context.getString(R.string.menu_inbox), true));
-        defaults.add(new Category("game", "🎮", context.getString(R.string.menu_game), true));
-        defaults.add(new Category("welcome", "👋", context.getString(R.string.menu_welcome), true));
-        defaults.add(new Category("work", "💼", context.getString(R.string.menu_work), true));
-        defaults.add(new Category("personal", "🏠", context.getString(R.string.menu_personal), true));
-        defaults.add(new Category("shopping", "📦", context.getString(R.string.menu_shopping), true));
-        defaults.add(new Category("learning", "📖", context.getString(R.string.menu_learning), true));
-        defaults.add(new Category("wish_list", "🦄", context.getString(R.string.menu_wish_list), true));
-        defaults.add(new Category("fitness", "🏃", context.getString(R.string.menu_fitness), true));
-        return defaults;
-    }
-
-    private Set<String> readCustomTitles() {
-        String raw = prefs.getString(KEY_CUSTOM_CATEGORIES, "");
-        Set<String> result = new LinkedHashSet<>();
-        if (raw == null || raw.trim().isEmpty()) {
-            return result;
+        Long orderLong = document.getLong("order");
+        if (orderLong != null) {
+            return orderLong.intValue();
         }
 
-        String[] parts = raw.split("\\n");
-        for (String part : parts) {
-            String normalized = normalize(part);
-            if (!normalized.isEmpty()) {
-                result.add(normalized);
-            }
-        }
-        return result;
+        return Integer.MAX_VALUE;
     }
 
-    private void saveCustomTitles(Set<String> titles) {
-        StringBuilder builder = new StringBuilder();
-        int i = 0;
-        for (String title : titles) {
-            if (i > 0) {
-                builder.append("\n");
-            }
-            builder.append(title);
-            i++;
-        }
-        prefs.edit().putString(KEY_CUSTOM_CATEGORIES, builder.toString()).apply();
-    }
-
-    private String normalize(String value) {
+    private String safeString(String value, String fallback) {
         if (value == null) {
-            return "";
+            return fallback;
         }
-        return value.trim();
+        String normalized = value.trim();
+        return normalized.isEmpty() ? fallback : normalized;
     }
 }
 
