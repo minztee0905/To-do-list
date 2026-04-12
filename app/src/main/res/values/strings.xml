@@ -1,34 +1,30 @@
 <resources>
-    <!-- App Name -->
     <string name="app_name">TickTok</string>
 
-    <!-- Top Bar -->
     <string name="menu_button">Menu</string>
     <string name="more_button">More Options</string>
 
-    <!-- Header -->
     <string name="welcome_header">👋 Welcome</string>
 
-    <!-- Cards -->
-    <string name="card_title_1">Views</string>
-    <string name="card_title_2">Likes</string>
-    <string name="card_title_3">Comments</string>
-    <string name="card_title_4">Shares</string>
+    <string name="card_title_1">Việc hôm nay</string>
+    <string name="card_title_2">Việc ngày mai</string>
+    <string name="card_title_3">Việc quá hạn</string>
+    <string name="card_title_4">Việc đã hoàn thành hôm nay</string>
     <string name="chevron_icon">Chevron Right Arrow</string>
 
-    <!-- Dock Navigation -->
     <string name="dock_icon_1">Home</string>
     <string name="dock_icon_2">Search</string>
     <string name="dock_icon_3">Add</string>
     <string name="dock_icon_4">View</string>
-    <string name="dock_icon_5">Settings</string>
+    <string name="dock_icon_5">Sự kiện</string>
 
-    <!-- Floating Action Button -->
     <string name="fab_button">Add New Item</string>
 
-    <!-- Menu Items -->
     <string name="home_menu_header">Home Menu</string>
     <string name="menu_today">Hôm nay</string>
+    <string name="menu_search">Tìm kiếm</string>
+    <string name="menu_calendar">Lịch</string>
+    <string name="menu_event">Sự kiện</string>
     <string name="menu_inbox">Hộp thư đến</string>
     <string name="menu_game">Game</string>
     <string name="menu_welcome">Welcome</string>
@@ -42,6 +38,7 @@
     <string name="menu_settings">Settings</string>
     <string name="game_header">Game</string>
     <string name="menu_categories">Danh mục</string>
+    <string name="menu_pomodoro">Pomodoro</string>
     <string name="add_category_title">Thêm danh mục</string>
     <string name="add_category_hint">Ví dụ: Dòng tiền</string>
     <string name="action_save">Lưu</string>
@@ -50,4 +47,19 @@
     <string name="error_duplicate_category">Danh mục đã tồn tại</string>
     <string name="error_load_categories">Không thể tải danh mục từ Firebase</string>
     <string name="menu_add_coming_soon">Tính năng thêm danh mục sẽ làm ở bước tiếp theo</string>
+
+    <string name="add_task_hint">Bạn thích làm gì?</string>
+    <string name="add_task_calendar">Lịch</string>
+    <string name="add_task_flag">Cờ</string>
+    <string name="add_task_more">Thêm tùy chọn</string>
+    <string name="add_task_mic">Micro</string>
+    <string name="add_task_send">Gửi Task</string>
+    <string name="search_hint">Bạn muốn tìm gì?</string>
+    <string name="search_clear">Xóa tìm kiếm</string>
+    <string name="menu_pomodoro_button">Mở Pomodoro</string>
+
+    <string name="priority_high">Ưu tiên cao</string>
+    <string name="priority_medium">Ưu tiên vừa</string>
+    <string name="priority_low">Ưu tiên thấp</string>
+    <string name="priority_none">Không ưu tiên</string>
 </resources>

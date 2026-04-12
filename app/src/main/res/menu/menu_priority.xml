@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_priority_high"
+        android:icon="@drawable/home_ic_flag"
+        android:title="@string/priority_high"
+        app:iconTint="#F44336" />
+
+    <item
+        android:id="@+id/action_priority_medium"
+        android:icon="@drawable/home_ic_flag"
+        android:title="@string/priority_medium"
+        app:iconTint="#FFC107" />
+
+    <item
+        android:id="@+id/action_priority_low"
+        android:icon="@drawable/home_ic_flag"
+        android:title="@string/priority_low"
+        app:iconTint="#2196F3" />
+
+    <item
+        android:id="@+id/action_priority_none"
+        android:icon="@drawable/home_ic_flag"
+        android:title="@string/priority_none"
+        app:iconTint="#9E9E9E" />
+</menu>

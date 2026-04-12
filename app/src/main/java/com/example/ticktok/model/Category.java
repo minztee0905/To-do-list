@@ -2,10 +2,13 @@ package com.example.ticktok.model;
 
 public class Category {
 
-    private final String id;
-    private final String icon;
-    private final String title;
-    private final int order;
+    private String id;
+    private String icon;
+    private String title;
+    private int order;
+
+    public Category() {
+    }
 
     public Category(String id, String icon, String title, int order) {
         this.id = id;
@@ -28,6 +31,22 @@ public class Category {
 
     public int getOrder() {
         return order;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public void setIcon(String icon) {
+        this.icon = icon;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public void setOrder(int order) {
+        this.order = order;
     }
 }
 
