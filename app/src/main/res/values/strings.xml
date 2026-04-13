@@ -40,6 +40,11 @@
     <string name="menu_categories">Danh mục</string>
     <string name="menu_pomodoro">Pomodoro</string>
     <string name="add_category_title">Thêm danh mục</string>
+    <string name="add_category_close">Đóng</string>
+    <string name="add_category_name_hint">Tên</string>
+    <string name="add_category_icon_hint">Icon</string>
+    <string name="add_category_icon_picker_title">Chọn icon danh mục</string>
+    <string name="add_category_default_icon">≡</string>
     <string name="add_category_hint">Ví dụ: Dòng tiền</string>
     <string name="action_save">Lưu</string>
     <string name="action_cancel">Hủy</string>

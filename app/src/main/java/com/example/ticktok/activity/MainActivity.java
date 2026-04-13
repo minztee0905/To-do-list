@@ -19,11 +19,12 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
-import androidx.fragment.app.FragmentContainerView;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.Fragment;
 
 import com.example.ticktok.R;
 import com.example.ticktok.fragment.AddCategoryFragment;
@@ -46,17 +47,14 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String STATE_SELECTED_MENU_TITLE = "state_selected_menu_title";
     private static final String TAG_ADD_TASK_SHEET = "add_task_sheet";
-    private static final String TAG_ADD_CATEGORY_SCREEN = "add_category_screen";
-    private static final String BACKSTACK_ADD_CATEGORY = "add_category";
+    private static final String TAG_ADD_CATEGORY_SHEET = "add_category_sheet";
 
     private DrawerLayout drawerLayout;
     private String selectedMenuTitle;
     private CategoryRepository categoryRepository;
     private MenuCategoryAdapter categoryAdapter;
     private final List<Category> menuCategories = new ArrayList<>();
-    private FragmentContainerView addCategoryOverlayContainer;
     private FloatingActionButton sharedFab;
-    private boolean wasShowingAddCategory;
     private boolean isPomodoroScreenActive;
     private boolean isSearchScreenActive;
     private ImageView dockIcon1;
@@ -81,7 +79,6 @@ public class MainActivity extends AppCompatActivity {
 
         setupInsets();
         applySystemBars();
-        setupAddCategoryOverlay();
         applyScreenChrome(selectedMenuTitle);
 
         updateHeader(selectedMenuTitle);
@@ -99,6 +96,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         refreshCategories();
+        syncFabVisibility();
     }
 
     @Override
@@ -118,30 +116,6 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(0, 0, 0, systemBars.bottom);
             return insets;
         });
-    }
-
-    private void setupAddCategoryOverlay() {
-        addCategoryOverlayContainer = findViewById(R.id.addCategoryOverlayContainer);
-        getSupportFragmentManager().addOnBackStackChangedListener(this::updateAddCategoryOverlayVisibility);
-        wasShowingAddCategory = false;
-        updateAddCategoryOverlayVisibility();
-    }
-
-    private void updateAddCategoryOverlayVisibility() {
-        if (addCategoryOverlayContainer == null) {
-            return;
-        }
-
-        boolean isShowingAddCategory = getSupportFragmentManager()
-                .findFragmentByTag(TAG_ADD_CATEGORY_SCREEN) != null;
-
-        addCategoryOverlayContainer.setVisibility(isShowingAddCategory ? View.VISIBLE : View.GONE);
-        updateFabVisibility(isShowingAddCategory || isPomodoroScreenActive || isSearchScreenActive);
-
-        if (wasShowingAddCategory && !isShowingAddCategory && drawerLayout != null) {
-            drawerLayout.openDrawer(GravityCompat.START);
-        }
-        wasShowingAddCategory = isShowingAddCategory;
     }
 
     private void applySystemBars() {
@@ -213,7 +187,11 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         sharedFab.setOnClickListener(v -> openAddTaskBottomSheet());
-        updateFabVisibility(getSupportFragmentManager().findFragmentByTag(TAG_ADD_CATEGORY_SCREEN) != null);
+        syncFabVisibility();
+    }
+
+    private void syncFabVisibility() {
+        updateFabVisibility(isAddCategorySheetShowing() || isPomodoroScreenActive || isSearchScreenActive);
     }
 
     private void updateFabVisibility(boolean hideFab) {
@@ -335,8 +313,7 @@ public class MainActivity extends AppCompatActivity {
 
         updateContentTopConstraint(isPomodoro || isCalendar);
 
-        boolean isShowingAddCategory = getSupportFragmentManager().findFragmentByTag(TAG_ADD_CATEGORY_SCREEN) != null;
-        updateFabVisibility(isPomodoro || isSearch || isShowingAddCategory);
+        syncFabVisibility();
     }
 
     private void updateContentTopConstraint(boolean isPomodoro) {
@@ -404,29 +381,30 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void openAddCategoryScreen() {
-        if (getSupportFragmentManager().findFragmentByTag(TAG_ADD_CATEGORY_SCREEN) != null) {
+        if (isAddCategorySheetShowing()) {
             return;
-        }
-
-        if (drawerLayout != null) {
-            drawerLayout.closeDrawer(GravityCompat.START);
-        }
-        if (addCategoryOverlayContainer != null) {
-            addCategoryOverlayContainer.setVisibility(View.VISIBLE);
         }
         updateFabVisibility(true);
 
-        getSupportFragmentManager()
-                .beginTransaction()
-                .setCustomAnimations(
-                        R.anim.slide_in_bottom,
-                        R.anim.slide_out_bottom,
-                        R.anim.slide_in_bottom,
-                        R.anim.slide_out_bottom
-                )
-                .replace(R.id.addCategoryOverlayContainer, new AddCategoryFragment(), TAG_ADD_CATEGORY_SCREEN)
-                .addToBackStack(BACKSTACK_ADD_CATEGORY)
-                .commit();
+        AddCategoryFragment sheet = new AddCategoryFragment();
+        sheet.show(getSupportFragmentManager(), TAG_ADD_CATEGORY_SHEET);
+    }
+
+    public void onAddCategorySheetDismissed() {
+        syncFabVisibility();
+        View root = findViewById(android.R.id.content);
+        if (root != null) {
+            root.post(this::syncFabVisibility);
+        }
+    }
+
+    private boolean isAddCategorySheetShowing() {
+        Fragment fragment = getSupportFragmentManager().findFragmentByTag(TAG_ADD_CATEGORY_SHEET);
+        if (fragment instanceof DialogFragment) {
+            android.app.Dialog dialog = ((DialogFragment) fragment).getDialog();
+            return dialog != null && dialog.isShowing();
+        }
+        return fragment != null && fragment.isVisible();
     }
 
     private void openPomodoroScreen() {

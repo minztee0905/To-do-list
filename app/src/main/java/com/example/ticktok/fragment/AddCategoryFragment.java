@@ -1,26 +1,37 @@
 package com.example.ticktok.fragment;
 
+import android.app.Dialog;
 import android.content.Context;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
-import android.text.InputFilter;
-import android.text.SpannableStringBuilder;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.BaseAdapter;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.view.inputmethod.InputMethodManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
+import androidx.core.content.ContextCompat;
 
 import com.example.ticktok.R;
+import com.example.ticktok.activity.MainActivity;
 import com.example.ticktok.repository.CategoryRepository;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
-public class AddCategoryFragment extends Fragment {
+public class AddCategoryFragment extends BottomSheetDialogFragment {
 
     private static final String DEFAULT_ICON = "≡";
     public static final String RESULT_KEY_ADD_CATEGORY = "result_add_category";
@@ -31,38 +42,60 @@ public class AddCategoryFragment extends Fragment {
     private TextView tv_save;
     private EditText et_category_icon;
     private EditText et_category_name;
+    private View iconPickerContainer;
+    private GridView gvCategoryIcons;
+    private IconGridAdapter iconGridAdapter;
+    private String selectedIconValue = DEFAULT_ICON;
     private CategoryRepository categoryRepository;
     private boolean isSaving;
-    private final InputFilter iconOnlyFilter = (source, start, end, dest, dstart, dend) -> {
-        if (source == null || start == end) {
-            return null;
+    private final IconOption[] iconOptions = new IconOption[] {
+            new IconOption("≡", "Mặc định"),
+            new IconOption("📁", "Chung"),
+            new IconOption("💼", "Công việc"),
+            new IconOption("🏠", "Gia đình"),
+            new IconOption("🛒", "Mua sắm"),
+            new IconOption("💰", "Tài chính"),
+            new IconOption("📚", "Học tập"),
+            new IconOption("💪", "Sức khỏe"),
+            new IconOption("🎯", "Mục tiêu"),
+            new IconOption("🧳", "Du lịch"),
+            new IconOption("❤️", "Quan trọng"),
+            new IconOption("🎉", "Sự kiện")
+    };
+
+    @NonNull
+    @Override
+    public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
+        BottomSheetDialog dialog = (BottomSheetDialog) super.onCreateDialog(savedInstanceState);
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setSoftInputMode(
+                    WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+                            | WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE
+            );
         }
 
-        SpannableStringBuilder filtered = new SpannableStringBuilder();
-        boolean changed = false;
-
-        for (int index = start; index < end; ) {
-            int codePoint = Character.codePointAt(source, index);
-            int charCount = Character.charCount(codePoint);
-
-            if (isAllowedIconCodePoint(codePoint)) {
-                filtered.append(source, index, index + charCount);
-            } else {
-                changed = true;
+        dialog.setOnShowListener(d -> {
+            FrameLayout bottomSheet = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
+            if (bottomSheet == null) {
+                return;
             }
 
-            index += charCount;
-        }
+            bottomSheet.setBackgroundResource(android.R.color.transparent);
+            BottomSheetBehavior<FrameLayout> behavior = BottomSheetBehavior.from(bottomSheet);
+            behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+            behavior.setSkipCollapsed(true);
+        });
 
-        return changed ? filtered : null;
-    };
+        return dialog;
+    }
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_add_category, container, false);
+        return inflater.inflate(R.layout.bottom_sheet_add_category, container, false);
     }
 
     @Override
@@ -72,6 +105,11 @@ public class AddCategoryFragment extends Fragment {
         initViews(view);
         categoryRepository = new CategoryRepository();
         setupListeners();
+
+        if (et_category_name != null) {
+            et_category_name.requestFocus();
+            et_category_name.post(() -> showKeyboard(et_category_name));
+        }
     }
 
     private void initViews(@NonNull View view) {
@@ -79,23 +117,38 @@ public class AddCategoryFragment extends Fragment {
         tv_save = view.findViewById(R.id.tv_save);
         et_category_icon = view.findViewById(R.id.et_category_icon);
         et_category_name = view.findViewById(R.id.et_category_name);
+        iconPickerContainer = view.findViewById(R.id.iconPickerContainer);
+        gvCategoryIcons = view.findViewById(R.id.gvCategoryIcons);
     }
 
     private void setupListeners() {
         if (et_category_icon != null) {
-            appendIconOnlyFilter();
+            setupIconPickerOnlyMode();
+            et_category_icon.setOnClickListener(v -> toggleIconPicker());
+        }
 
-            et_category_icon.setOnFocusChangeListener((v, hasFocus) -> {
-                if (hasFocus) {
-                    et_category_icon.post(() -> et_category_icon.selectAll());
-                    showKeyboard(et_category_icon);
+        if (gvCategoryIcons != null) {
+            iconGridAdapter = new IconGridAdapter();
+            gvCategoryIcons.setAdapter(iconGridAdapter);
+            gvCategoryIcons.setOnItemClickListener((parent, view, position, id) -> {
+                IconOption selected = iconOptions[position];
+                selectedIconValue = selected.icon;
+                if (et_category_icon != null) {
+                    et_category_icon.setText(selected.icon);
+                }
+                if (iconGridAdapter != null) {
+                    iconGridAdapter.notifyDataSetChanged();
+                }
+                setIconPickerVisible(false);
+                if (et_category_name != null) {
+                    et_category_name.requestFocus();
+                    showKeyboard(et_category_name);
                 }
             });
+        }
 
-            et_category_icon.setOnClickListener(v -> {
-                showKeyboard(et_category_icon);
-                et_category_icon.post(() -> et_category_icon.selectAll());
-            });
+        if (et_category_name != null) {
+            et_category_name.setOnClickListener(v -> setIconPickerVisible(false));
         }
 
         if (iv_close != null) {
@@ -136,9 +189,6 @@ public class AddCategoryFragment extends Fragment {
 
         if (icon.isEmpty()) {
             icon = DEFAULT_ICON;
-        } else if (!isValidIconInput(icon)) {
-            Toast.makeText(requireContext(), "Icon chỉ cho phép emoji hoặc ký hiệu", Toast.LENGTH_SHORT).show();
-            return;
         }
 
         setSavingState(true);
@@ -188,57 +238,40 @@ public class AddCategoryFragment extends Fragment {
         }
     }
 
-    private void appendIconOnlyFilter() {
+    private void setupIconPickerOnlyMode() {
         if (et_category_icon == null) {
             return;
         }
-
-        InputFilter[] existing = et_category_icon.getFilters();
-        InputFilter[] merged = new InputFilter[existing.length + 1];
-        System.arraycopy(existing, 0, merged, 0, existing.length);
-        merged[existing.length] = iconOnlyFilter;
-        et_category_icon.setFilters(merged);
+        et_category_icon.setFocusable(false);
+        et_category_icon.setFocusableInTouchMode(false);
+        et_category_icon.setCursorVisible(false);
+        et_category_icon.setLongClickable(false);
+        et_category_icon.setTextIsSelectable(false);
+        et_category_icon.setShowSoftInputOnFocus(false);
     }
 
-    private boolean isValidIconInput(@NonNull String value) {
-        boolean hasVisibleSymbol = false;
-        for (int i = 0; i < value.length(); ) {
-            int codePoint = value.codePointAt(i);
-            if (!isAllowedIconCodePoint(codePoint)) {
-                return false;
-            }
-            if (codePoint != 0x200D && codePoint != 0xFE0F) {
-                hasVisibleSymbol = true;
-            }
-            i += Character.charCount(codePoint);
+    private void toggleIconPicker() {
+        if (!isAdded()) {
+            return;
         }
-        return hasVisibleSymbol;
+        if (et_category_icon != null && et_category_icon.getText() != null) {
+            String value = et_category_icon.getText().toString().trim();
+            selectedIconValue = value.isEmpty() ? DEFAULT_ICON : value;
+        }
+        if (iconGridAdapter != null) {
+            iconGridAdapter.notifyDataSetChanged();
+        }
+        setIconPickerVisible(iconPickerContainer == null || iconPickerContainer.getVisibility() != View.VISIBLE);
     }
 
-    private boolean isAllowedIconCodePoint(int codePoint) {
-        if (Character.isLetterOrDigit(codePoint) || Character.isWhitespace(codePoint)) {
-            return false;
+    private void setIconPickerVisible(boolean visible) {
+        if (iconPickerContainer != null) {
+            iconPickerContainer.setVisibility(visible ? View.VISIBLE : View.GONE);
         }
+    }
 
-        if (codePoint == 0x200D || codePoint == 0xFE0F) {
-            return true;
-        }
-
-        if (codePoint >= 0x1F3FB && codePoint <= 0x1F3FF) {
-            return true;
-        }
-
-        if ((codePoint >= 0x1F000 && codePoint <= 0x1FAFF)
-                || (codePoint >= 0x2600 && codePoint <= 0x27BF)) {
-            return true;
-        }
-
-        int type = Character.getType(codePoint);
-        return type == Character.OTHER_SYMBOL
-                || type == Character.MATH_SYMBOL
-                || type == Character.CURRENCY_SYMBOL
-                || type == Character.MODIFIER_SYMBOL
-                || type == Character.OTHER_PUNCTUATION;
+    private int dpToPx(int dp) {
+        return Math.round(dp * requireContext().getResources().getDisplayMetrics().density);
     }
 
     private void hideKeyboard() {
@@ -273,13 +306,66 @@ public class AddCategoryFragment extends Fragment {
         }
     }
     private void closeScreen() {
-        if (isAdded()) {
-            getParentFragmentManager().popBackStack();
+        dismissAllowingStateLoss();
+    }
+
+    @Override
+    public void onDismiss(@NonNull android.content.DialogInterface dialog) {
+        super.onDismiss(dialog);
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).onAddCategorySheetDismissed();
+        }
+    }
+
+    private static class IconOption {
+        final String icon;
+        final String label;
+
+        IconOption(String icon, String label) {
+            this.icon = icon;
+            this.label = label;
+        }
+    }
+
+    private class IconGridAdapter extends BaseAdapter {
+        @Override
+        public int getCount() {
+            return iconOptions.length;
+        }
+
+        @Override
+        public Object getItem(int position) {
+            return iconOptions[position];
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return position;
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            TextView itemView = convertView instanceof TextView
+                    ? (TextView) convertView
+                    : new TextView(parent.getContext());
+
+            int size = dpToPx(56);
+            itemView.setLayoutParams(new GridView.LayoutParams(size, size));
+            itemView.setGravity(Gravity.CENTER);
+            itemView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 26);
+            itemView.setText(iconOptions[position].icon);
+            itemView.setContentDescription(iconOptions[position].label);
+            itemView.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_white));
+
+            GradientDrawable bg = new GradientDrawable();
+            bg.setShape(GradientDrawable.RECTANGLE);
+            bg.setCornerRadius(dpToPx(14));
+            boolean isSelected = iconOptions[position].icon.equals(selectedIconValue);
+            bg.setColor(Color.parseColor(isSelected ? "#FF9800" : "#2A2A2A"));
+            itemView.setTextColor(Color.parseColor(isSelected ? "#121212" : "#FFFFFF"));
+            itemView.setBackground(bg);
+            return itemView;
         }
     }
 }
-
-
-
-
 
