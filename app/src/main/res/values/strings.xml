@@ -67,4 +67,16 @@
     <string name="priority_medium">Ưu tiên vừa</string>
     <string name="priority_low">Ưu tiên thấp</string>
     <string name="priority_none">Không ưu tiên</string>
+
+    <string name="login_logo">Logo ứng dụng</string>
+    <string name="login_title">ĐĂNG NHẬP</string>
+    <string name="login_subtitle">Vui lòng nhập thông tin của bạn</string>
+    <string name="login_email_hint">Tài khoản</string>
+    <string name="login_password_hint">Mật khẩu</string>
+    <string name="login_button">Đăng nhập</string>
+    <string name="login_forgot_password">Quên mật khẩu?</string>
+    <string name="login_or">HOẶC</string>
+    <string name="login_google">Tiếp tục với Google</string>
+    <string name="login_no_account">Chưa có tài khoản?</string>
+    <string name="login_sign_up_now">Đăng ký ngay</string>
 </resources>
