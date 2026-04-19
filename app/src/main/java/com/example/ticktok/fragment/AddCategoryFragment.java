@@ -27,6 +27,7 @@ import androidx.core.content.ContextCompat;
 import com.example.ticktok.R;
 import com.example.ticktok.activity.MainActivity;
 import com.example.ticktok.repository.CategoryRepository;
+import com.example.ticktok.repository.CategoryRepositoryContract;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
@@ -46,7 +47,7 @@ public class AddCategoryFragment extends BottomSheetDialogFragment {
     private GridView gvCategoryIcons;
     private IconGridAdapter iconGridAdapter;
     private String selectedIconValue = DEFAULT_ICON;
-    private CategoryRepository categoryRepository;
+    private CategoryRepositoryContract categoryRepository;
     private boolean isSaving;
     private final IconOption[] iconOptions = new IconOption[] {
             new IconOption("≡", "Mặc định"),
@@ -76,7 +77,8 @@ public class AddCategoryFragment extends BottomSheetDialogFragment {
         }
 
         dialog.setOnShowListener(d -> {
-            FrameLayout bottomSheet = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
+            int bottomSheetId = getResources().getIdentifier("design_bottom_sheet", "id", "com.google.android.material");
+            FrameLayout bottomSheet = dialog.findViewById(bottomSheetId);
             if (bottomSheet == null) {
                 return;
             }
@@ -202,9 +204,9 @@ public class AddCategoryFragment extends BottomSheetDialogFragment {
             return;
         }
 
-        categoryRepository.addCategory(name, icon, new CategoryRepository.OnCategorySavedListener() {
+        categoryRepository.addCategory(name, icon, new CategoryRepositoryContract.OnCategorySavedListener() {
             @Override
-            public void onSuccess(String message) {
+            public void onSuccess() {
                 if (!isAdded()) {
                     return;
                 }
@@ -214,7 +216,7 @@ public class AddCategoryFragment extends BottomSheetDialogFragment {
                 result.putString(RESULT_KEY_CATEGORY_ICON, icon);
                 getParentFragmentManager().setFragmentResult(RESULT_KEY_ADD_CATEGORY, result);
 
-                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), R.string.add_category_success, Toast.LENGTH_SHORT).show();
                 hideKeyboard();
                 closeScreen();
             }

@@ -51,6 +51,7 @@
     <string name="error_empty_category">Tên danh mục không được để trống</string>
     <string name="error_duplicate_category">Danh mục đã tồn tại</string>
     <string name="error_load_categories">Không thể tải danh mục từ Firebase</string>
+    <string name="add_category_success">Thêm danh mục thành công</string>
     <string name="menu_add_coming_soon">Tính năng thêm danh mục sẽ làm ở bước tiếp theo</string>
 
     <string name="add_task_hint">Bạn thích làm gì?</string>
@@ -79,4 +80,5 @@
     <string name="login_google">Tiếp tục với Google</string>
     <string name="login_no_account">Chưa có tài khoản?</string>
     <string name="login_sign_up_now">Đăng ký ngay</string>
+    <string name="empty_tasks">Chưa có task trong danh mục này</string>
 </resources>

@@ -16,6 +16,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListAdapter;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -23,11 +24,15 @@ import androidx.appcompat.widget.ListPopupWindow;
 import androidx.core.content.ContextCompat;
 
 import com.example.ticktok.R;
+import com.example.ticktok.model.Task;
+import com.google.firebase.firestore.FieldValue;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
 public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
+    private static final String ARG_CATEGORY_ID = "arg_category_id";
     private static final int PRIORITY_NONE = 0;
     private static final int PRIORITY_LOW = 1;
     private static final int PRIORITY_MEDIUM = 2;
@@ -37,6 +42,25 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
     private int selectedPriority = PRIORITY_NONE;
     private EditText taskInput;
     private ImageButton btnFlag;
+    private String categoryId;
+
+    public AddTaskBottomSheetFragment() {
+    }
+
+    public AddTaskBottomSheetFragment(@Nullable String categoryId) {
+        Bundle args = new Bundle();
+        args.putString(ARG_CATEGORY_ID, categoryId);
+        setArguments(args);
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        Bundle args = getArguments();
+        if (args != null) {
+            categoryId = args.getString(ARG_CATEGORY_ID);
+        }
+    }
 
     @NonNull
     @Override
@@ -83,6 +107,9 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
 
         ImageButton btnMicrophone = view.findViewById(R.id.btnMicrophone);
         ImageButton btnSend = view.findViewById(R.id.btnSend);
+        if (btnSend != null) {
+            btnSend.setOnClickListener(v -> handleSendTask());
+        }
         ImageButton btnCalendar = view.findViewById(R.id.btnCalendar);
         if (btnCalendar != null) {
             btnCalendar.setOnClickListener(v -> showDatePicker());
@@ -258,6 +285,61 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
             default:
                 return ContextCompat.getColor(requireContext(), R.color.text_white);
         }
+    }
+
+    private void handleSendTask() {
+        if (taskInput == null) {
+            return;
+        }
+
+        String rawInput = taskInput.getText() != null ? taskInput.getText().toString().trim() : "";
+        if (rawInput.isEmpty()) {
+            Toast.makeText(requireContext(), R.string.add_task_hint, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String title = extractTitle(rawInput);
+        String description = extractDescription(rawInput);
+        Long dueDateValue = selectedDueDate > 0 ? selectedDueDate : null;
+
+        Task task = new Task(
+                title,
+                description,
+                categoryId,
+                selectedPriority,
+                dueDateValue,
+                0
+        );
+        task.setCompleted(false);
+        task.setOrder(0);
+        task.setCreatedAt(null);
+
+        FirebaseFirestore.getInstance()
+                .collection("tasks")
+                .add(task)
+                .addOnSuccessListener(documentReference -> {
+                    // Force server time for createdAt to avoid client clock drift.
+                    documentReference.update("createdAt", FieldValue.serverTimestamp());
+                    Toast.makeText(requireContext(), "Đã thêm công việc", Toast.LENGTH_SHORT).show();
+                    dismiss();
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(requireContext(), e.getMessage(), Toast.LENGTH_SHORT).show()
+                );
+    }
+
+    private String extractTitle(String rawInput) {
+        String[] lines = rawInput.split("\\n", 2);
+        String firstLine = lines[0].trim();
+        return firstLine.isEmpty() ? rawInput : firstLine;
+    }
+
+    private String extractDescription(String rawInput) {
+        String[] lines = rawInput.split("\\n", 2);
+        if (lines.length < 2) {
+            return "";
+        }
+        return lines[1].trim();
     }
 
     private static class PriorityOption {

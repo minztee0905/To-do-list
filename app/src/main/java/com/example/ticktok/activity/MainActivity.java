@@ -9,6 +9,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
@@ -38,6 +39,7 @@ import com.example.ticktok.fragment.SearchFragment;
 import com.example.ticktok.fragment.WelcomeFragment;
 import com.example.ticktok.model.Category;
 import com.example.ticktok.repository.CategoryRepository;
+import com.example.ticktok.repository.CategoryRepositoryContract;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.ArrayList;
@@ -51,7 +53,8 @@ public class MainActivity extends AppCompatActivity {
 
     private DrawerLayout drawerLayout;
     private String selectedMenuTitle;
-    private CategoryRepository categoryRepository;
+    private String selectedCategoryId;
+    private CategoryRepositoryContract categoryRepository;
     private MenuCategoryAdapter categoryAdapter;
     private final List<Category> menuCategories = new ArrayList<>();
     private FloatingActionButton sharedFab;
@@ -62,6 +65,20 @@ public class MainActivity extends AppCompatActivity {
     private ImageView dockIcon3;
     private ImageView dockIcon4;
     private ImageView dockIcon5;
+
+    private static final class ScreenState {
+        final boolean isPomodoro;
+        final boolean isSearch;
+        final boolean isCalendar;
+        final boolean isEvent;
+
+        ScreenState(boolean isPomodoro, boolean isSearch, boolean isCalendar, boolean isEvent) {
+            this.isPomodoro = isPomodoro;
+            this.isSearch = isSearch;
+            this.isCalendar = isCalendar;
+            this.isEvent = isEvent;
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -205,7 +222,7 @@ public class MainActivity extends AppCompatActivity {
         if (getSupportFragmentManager().findFragmentByTag(TAG_ADD_TASK_SHEET) != null) {
             return;
         }
-        AddTaskBottomSheetFragment sheet = new AddTaskBottomSheetFragment();
+        AddTaskBottomSheetFragment sheet = new AddTaskBottomSheetFragment(selectedCategoryId);
         sheet.show(getSupportFragmentManager(), TAG_ADD_TASK_SHEET);
     }
 
@@ -214,11 +231,12 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        categoryRepository.getCategories(new CategoryRepository.LoadCategoriesCallback() {
+        categoryRepository.getCategories(new CategoryRepositoryContract.LoadCategoriesCallback() {
             @Override
             public void onLoaded(List<Category> categories) {
                 menuCategories.clear();
                 menuCategories.addAll(categories);
+                selectedCategoryId = resolveCategoryIdForTitle(normalizeTitle(selectedMenuTitle));
                 categoryAdapter.submitList(new ArrayList<>(menuCategories), selectedMenuTitle);
             }
 
@@ -238,13 +256,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void onCategorySelected(Category category) {
-        selectedMenuTitle = category.getTitle();
-        updateHeader(selectedMenuTitle);
-        showContentForMenu(selectedMenuTitle);
-        if (drawerLayout != null) {
-            drawerLayout.closeDrawer(GravityCompat.START);
-        }
-        refreshCategories();
+        selectedCategoryId = category.getId();
+        navigateTo(category.getTitle(), true, true);
     }
 
     private void updateHeader(String title) {
@@ -260,23 +273,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showContentForMenu(String title) {
-        androidx.fragment.app.Fragment targetFragment;
-        if (title == null || title.trim().isEmpty() || getString(R.string.menu_welcome).equalsIgnoreCase(title.trim())) {
-            targetFragment = new WelcomeFragment();
-        } else if (getString(R.string.menu_search).equalsIgnoreCase(title.trim())) {
-            targetFragment = new SearchFragment();
-        } else if (getString(R.string.menu_pomodoro).equalsIgnoreCase(title.trim())) {
-            targetFragment = new PomodoroFragment();
-        } else if (getString(R.string.menu_calendar).equalsIgnoreCase(title.trim())) {
-            targetFragment = new CalendarFragment();
-        } else if (getString(R.string.menu_event).equalsIgnoreCase(title.trim())) {
-            targetFragment = new EventFragment();
-        } else {
-            targetFragment = CategoryFragment.newInstance(title.trim());
-        }
+        String normalizedTitle = normalizeTitle(title);
+        Fragment targetFragment = resolveFragmentForTitle(normalizedTitle);
 
-        applyScreenChrome(title);
-        updateDockSelection(title);
+        applyScreenChrome(normalizedTitle);
+        updateDockSelection(normalizedTitle);
 
         getSupportFragmentManager()
                 .beginTransaction()
@@ -285,33 +286,33 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void applyScreenChrome(String title) {
-        boolean isPomodoro = title != null && getString(R.string.menu_pomodoro).equalsIgnoreCase(title.trim());
-        boolean isSearch = title != null && getString(R.string.menu_search).equalsIgnoreCase(title.trim());
-        boolean isCalendar = title != null && getString(R.string.menu_calendar).equalsIgnoreCase(title.trim());
-        boolean isEvent = title != null && getString(R.string.menu_event).equalsIgnoreCase(title.trim());
-        isPomodoroScreenActive = isPomodoro;
-        isSearchScreenActive = isSearch;
+        applyScreenChrome(evaluateScreenState(normalizeTitle(title)));
+    }
+
+    private void applyScreenChrome(ScreenState state) {
+        isPomodoroScreenActive = state.isPomodoro;
+        isSearchScreenActive = state.isSearch;
 
         View topBar = findViewById(R.id.topBar);
         TextView headerText = findViewById(R.id.headerText);
 
         if (topBar != null) {
-            topBar.setVisibility((isPomodoro || isSearch || isCalendar || isEvent) ? View.GONE : View.VISIBLE);
+            topBar.setVisibility((state.isPomodoro || state.isSearch || state.isCalendar || state.isEvent) ? View.GONE : View.VISIBLE);
         }
         if (headerText != null) {
-            headerText.setVisibility((isPomodoro || isCalendar) ? View.GONE : View.VISIBLE);
+            headerText.setVisibility((state.isPomodoro || state.isCalendar) ? View.GONE : View.VISIBLE);
         }
 
         if (drawerLayout != null) {
-            drawerLayout.setDrawerLockMode((isPomodoro || isCalendar || isEvent)
+            drawerLayout.setDrawerLockMode((state.isPomodoro || state.isCalendar || state.isEvent)
                     ? DrawerLayout.LOCK_MODE_LOCKED_CLOSED
                     : DrawerLayout.LOCK_MODE_UNLOCKED);
-            if (isPomodoro || isCalendar || isEvent) {
+            if (state.isPomodoro || state.isCalendar || state.isEvent) {
                 drawerLayout.closeDrawer(GravityCompat.START);
             }
         }
 
-        updateContentTopConstraint(isPomodoro || isCalendar);
+        updateContentTopConstraint(state.isPomodoro || state.isCalendar);
 
         syncFabVisibility();
     }
@@ -339,6 +340,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void updateDockSelection(String title) {
+        ScreenState state = evaluateScreenState(normalizeTitle(title));
         int unselectedColor = ContextCompat.getColor(this, R.color.text_white);
         int selectedColor = ContextCompat.getColor(this, R.color.fab_orange);
 
@@ -348,21 +350,84 @@ public class MainActivity extends AppCompatActivity {
         setDockIconState(dockIcon4, false, unselectedColor);
         setDockIconState(dockIcon5, false, unselectedColor);
 
-        boolean isPomodoro = title != null && getString(R.string.menu_pomodoro).equalsIgnoreCase(title.trim());
-        boolean isSearch = title != null && getString(R.string.menu_search).equalsIgnoreCase(title.trim());
-        boolean isCalendar = title != null && getString(R.string.menu_calendar).equalsIgnoreCase(title.trim());
-        boolean isEvent = title != null && getString(R.string.menu_event).equalsIgnoreCase(title.trim());
-        if (isPomodoro) {
+        if (state.isPomodoro) {
             setDockIconState(dockIcon1, true, selectedColor);
-        } else if (isSearch) {
+        } else if (state.isSearch) {
             setDockIconState(dockIcon2, true, selectedColor);
-        } else if (isCalendar) {
+        } else if (state.isCalendar) {
             setDockIconState(dockIcon4, true, selectedColor);
-        } else if (isEvent) {
+        } else if (state.isEvent) {
             setDockIconState(dockIcon5, true, selectedColor);
         } else {
             setDockIconState(dockIcon3, true, selectedColor);
         }
+    }
+
+    private void navigateTo(String title, boolean closeDrawer, boolean refreshCategoryList) {
+        selectedMenuTitle = normalizeTitle(title);
+        selectedCategoryId = resolveCategoryIdForTitle(selectedMenuTitle);
+        updateHeader(selectedMenuTitle);
+        showContentForMenu(selectedMenuTitle);
+        if (closeDrawer && drawerLayout != null) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+        }
+        if (refreshCategoryList) {
+            refreshCategories();
+        }
+    }
+
+    private String normalizeTitle(String title) {
+        if (title == null || title.trim().isEmpty()) {
+            return getString(R.string.menu_welcome);
+        }
+        return title.trim();
+    }
+
+    private ScreenState evaluateScreenState(String normalizedTitle) {
+        return new ScreenState(
+                getString(R.string.menu_pomodoro).equalsIgnoreCase(normalizedTitle),
+                getString(R.string.menu_search).equalsIgnoreCase(normalizedTitle),
+                getString(R.string.menu_calendar).equalsIgnoreCase(normalizedTitle),
+                getString(R.string.menu_event).equalsIgnoreCase(normalizedTitle)
+        );
+    }
+
+    private Fragment resolveFragmentForTitle(String normalizedTitle) {
+        ScreenState state = evaluateScreenState(normalizedTitle);
+        if (getString(R.string.menu_welcome).equalsIgnoreCase(normalizedTitle)) {
+            return new WelcomeFragment();
+        }
+        if (state.isSearch) {
+            return new SearchFragment();
+        }
+        if (state.isPomodoro) {
+            return new PomodoroFragment();
+        }
+        if (state.isCalendar) {
+            return new CalendarFragment();
+        }
+        if (state.isEvent) {
+            return new EventFragment();
+        }
+        return CategoryFragment.newInstance(normalizedTitle, resolveCategoryIdForTitle(normalizedTitle));
+    }
+
+    @Nullable
+    private String resolveCategoryIdForTitle(String normalizedTitle) {
+        ScreenState state = evaluateScreenState(normalizedTitle);
+        if (getString(R.string.menu_welcome).equalsIgnoreCase(normalizedTitle)
+                || state.isSearch
+                || state.isPomodoro
+                || state.isCalendar
+                || state.isEvent) {
+            return null;
+        }
+        for (Category category : menuCategories) {
+            if (category.getTitle() != null && category.getTitle().trim().equalsIgnoreCase(normalizedTitle)) {
+                return category.getId();
+            }
+        }
+        return null;
     }
 
     private void setDockIconState(ImageView icon, boolean isSelected, int color) {
@@ -408,48 +473,23 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void openPomodoroScreen() {
-        selectedMenuTitle = getString(R.string.menu_pomodoro);
-        updateHeader(selectedMenuTitle);
-        showContentForMenu(selectedMenuTitle);
-        if (drawerLayout != null) {
-            drawerLayout.closeDrawer(GravityCompat.START);
-        }
+        navigateTo(getString(R.string.menu_pomodoro), true, false);
     }
 
     private void openHomeScreen() {
-        selectedMenuTitle = getString(R.string.menu_welcome);
-        updateHeader(selectedMenuTitle);
-        showContentForMenu(selectedMenuTitle);
-        if (drawerLayout != null) {
-            drawerLayout.closeDrawer(GravityCompat.START);
-        }
+        navigateTo(getString(R.string.menu_welcome), true, false);
     }
 
     private void openSearchScreen() {
-        selectedMenuTitle = getString(R.string.menu_search);
-        updateHeader(selectedMenuTitle);
-        showContentForMenu(selectedMenuTitle);
-        if (drawerLayout != null) {
-            drawerLayout.closeDrawer(GravityCompat.START);
-        }
+        navigateTo(getString(R.string.menu_search), true, false);
     }
 
     private void openCalendarScreen() {
-        selectedMenuTitle = getString(R.string.menu_calendar);
-        updateHeader(selectedMenuTitle);
-        showContentForMenu(selectedMenuTitle);
-        if (drawerLayout != null) {
-            drawerLayout.closeDrawer(GravityCompat.START);
-        }
+        navigateTo(getString(R.string.menu_calendar), true, false);
     }
 
     private void openEventScreen() {
-        selectedMenuTitle = getString(R.string.menu_event);
-        updateHeader(selectedMenuTitle);
-        showContentForMenu(selectedMenuTitle);
-        if (drawerLayout != null) {
-            drawerLayout.closeDrawer(GravityCompat.START);
-        }
+        navigateTo(getString(R.string.menu_event), true, false);
     }
 
 
