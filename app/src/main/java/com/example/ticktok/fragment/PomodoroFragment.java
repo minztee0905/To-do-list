@@ -27,7 +27,9 @@ import androidx.fragment.app.Fragment;
 
 import com.example.ticktok.R;
 import com.example.ticktok.model.Task;
+import com.example.ticktok.util.UserFirestorePaths;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
@@ -604,8 +606,13 @@ public class PomodoroFragment extends Fragment {
             return;
         }
 
-        FirebaseFirestore.getInstance()
-                .collection("tasks")
+        CollectionReference tasksRef = UserFirestorePaths.getUserCollection("tasks");
+        if (tasksRef == null) {
+            Toast.makeText(requireContext(), getString(R.string.auth_error_login_required), Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        tasksRef
                 .get()
                 .addOnSuccessListener(this::showTaskPickerDialog)
                 .addOnFailureListener(error -> {

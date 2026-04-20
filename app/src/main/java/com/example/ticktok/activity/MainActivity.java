@@ -1,5 +1,6 @@
 package com.example.ticktok.activity;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageButton;
@@ -42,6 +43,8 @@ import com.example.ticktok.model.Category;
 import com.example.ticktok.repository.CategoryRepository;
 import com.example.ticktok.repository.CategoryRepositoryContract;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -114,6 +117,13 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (FirebaseAuth.getInstance().getCurrentUser() == null) {
+            Intent intent = new Intent(this, LoginActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finish();
+            return;
+        }
         refreshCategories();
         syncFabVisibility();
     }
@@ -156,6 +166,8 @@ public class MainActivity extends AppCompatActivity {
     private void setupDrawerMenu() {
         categoryRepository = new CategoryRepository();
 
+        setupProfileHeader();
+
         RecyclerView rvMenuCategories = findViewById(R.id.rvMenuCategories);
         if (rvMenuCategories != null) {
             rvMenuCategories.setLayoutManager(new LinearLayoutManager(this));
@@ -169,6 +181,43 @@ public class MainActivity extends AppCompatActivity {
         }
 
         refreshCategories();
+    }
+
+    private void setupProfileHeader() {
+        LinearLayout layoutUserProfile = findViewById(R.id.layoutUserProfile);
+        TextView tvUserName = findViewById(R.id.tvUserName);
+
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (tvUserName != null) {
+            tvUserName.setText(resolveDisplayName(user));
+        }
+
+        if (layoutUserProfile != null) {
+            layoutUserProfile.setOnClickListener(v -> {
+                Intent intent = new Intent(MainActivity.this, SettingsActivity.class);
+                startActivity(intent);
+                if (drawerLayout != null) {
+                    drawerLayout.closeDrawer(GravityCompat.START);
+                }
+            });
+        }
+    }
+
+    @NonNull
+    private String resolveDisplayName(@Nullable FirebaseUser user) {
+        if (user == null) {
+            return getString(R.string.menu_user_default_name);
+        }
+
+        if (user.getDisplayName() != null && !user.getDisplayName().trim().isEmpty()) {
+            return user.getDisplayName().trim();
+        }
+
+        if (user.getEmail() != null && !user.getEmail().trim().isEmpty()) {
+            return user.getEmail().trim();
+        }
+
+        return getString(R.string.menu_user_default_name);
     }
 
     private void setupDockNavigation() {

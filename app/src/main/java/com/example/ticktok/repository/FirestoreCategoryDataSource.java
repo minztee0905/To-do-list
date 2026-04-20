@@ -1,6 +1,7 @@
 package com.example.ticktok.repository;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
@@ -8,6 +9,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.WriteBatch;
+import com.example.ticktok.util.UserFirestorePaths;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,7 +24,6 @@ public class FirestoreCategoryDataSource implements CategoryDataSource {
     private static final String FIELD_ORDER = "order";
 
     private final FirebaseFirestore db;
-    private final CollectionReference categoriesRef;
 
     public FirestoreCategoryDataSource() {
         this(FirebaseFirestore.getInstance());
@@ -30,11 +31,14 @@ public class FirestoreCategoryDataSource implements CategoryDataSource {
 
     public FirestoreCategoryDataSource(@NonNull FirebaseFirestore firestore) {
         db = firestore;
-        categoriesRef = db.collection(COLLECTION_CATEGORIES);
     }
 
     @Override
     public void getCategories(@NonNull LoadRawCategoriesCallback callback) {
+        CollectionReference categoriesRef = resolveCategoriesRef(callback);
+        if (categoriesRef == null) {
+            return;
+        }
         categoriesRef
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
@@ -56,16 +60,43 @@ public class FirestoreCategoryDataSource implements CategoryDataSource {
     public void insertCategoryAtTop(@NonNull String name,
                                     @NonNull String icon,
                                     @NonNull InsertCategoryCallback callback) {
+        CollectionReference categoriesRef = resolveCategoriesRef(callback);
+        if (categoriesRef == null) {
+            return;
+        }
         categoriesRef
                 .get()
                 .addOnSuccessListener(snapshot -> runInsertAndShiftBatch(snapshot, name, icon, callback))
                 .addOnFailureListener(callback::onError);
     }
 
+    @Nullable
+    private CollectionReference resolveCategoriesRef(@NonNull InsertCategoryCallback callback) {
+        CollectionReference categoriesRef = UserFirestorePaths.getUserCollection(db, COLLECTION_CATEGORIES);
+        if (categoriesRef == null) {
+            callback.onError(new IllegalStateException("User is not authenticated"));
+        }
+        return categoriesRef;
+    }
+
+    @Nullable
+    private CollectionReference resolveCategoriesRef(@NonNull LoadRawCategoriesCallback callback) {
+        CollectionReference categoriesRef = UserFirestorePaths.getUserCollection(db, COLLECTION_CATEGORIES);
+        if (categoriesRef == null) {
+            callback.onError(new IllegalStateException("User is not authenticated"));
+        }
+        return categoriesRef;
+    }
+
     private void runInsertAndShiftBatch(@NonNull QuerySnapshot snapshot,
                                         @NonNull String name,
                                         @NonNull String icon,
                                         @NonNull InsertCategoryCallback callback) {
+        CollectionReference categoriesRef = UserFirestorePaths.getUserCollection(db, COLLECTION_CATEGORIES);
+        if (categoriesRef == null) {
+            callback.onError(new IllegalStateException("User is not authenticated"));
+            return;
+        }
         WriteBatch batch = db.batch();
 
         for (QueryDocumentSnapshot document : snapshot) {

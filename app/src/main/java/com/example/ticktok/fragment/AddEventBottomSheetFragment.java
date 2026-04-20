@@ -28,11 +28,13 @@ import androidx.core.content.ContextCompat;
 
 import com.example.ticktok.R;
 import com.example.ticktok.model.Event;
+import com.example.ticktok.util.UserFirestorePaths;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.CollectionReference;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -212,8 +214,14 @@ public class AddEventBottomSheetFragment extends BottomSheetDialogFragment {
         event.setCreatedAt(null);
 
         setSavingState(true);
-        FirebaseFirestore.getInstance()
-                .collection("events")
+        CollectionReference eventsRef = UserFirestorePaths.getUserCollection("events");
+        if (eventsRef == null) {
+            setSavingState(false);
+            Toast.makeText(requireContext(), R.string.auth_error_login_required, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        eventsRef
                 .add(event)
                 .addOnSuccessListener(documentReference -> {
                     documentReference.update("createdAt", FieldValue.serverTimestamp());

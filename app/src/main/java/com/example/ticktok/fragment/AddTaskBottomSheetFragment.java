@@ -25,8 +25,10 @@ import androidx.core.content.ContextCompat;
 
 import com.example.ticktok.R;
 import com.example.ticktok.model.Task;
+import com.example.ticktok.util.UserFirestorePaths;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.CollectionReference;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
@@ -336,8 +338,13 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
         task.setOrder(0);
         task.setCreatedAt(null);
 
-        FirebaseFirestore.getInstance()
-                .collection("tasks")
+        CollectionReference tasksRef = UserFirestorePaths.getUserCollection("tasks");
+        if (tasksRef == null) {
+            Toast.makeText(requireContext(), R.string.auth_error_login_required, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        tasksRef
                 .add(task)
                 .addOnSuccessListener(documentReference -> {
                     // Force server time for createdAt to avoid client clock drift.

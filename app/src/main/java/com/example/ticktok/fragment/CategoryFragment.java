@@ -15,8 +15,10 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.ticktok.R;
 import com.example.ticktok.adapter.TaskAdapter;
 import com.example.ticktok.model.Task;
+import com.example.ticktok.util.UserFirestorePaths;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 
@@ -101,9 +103,15 @@ public class CategoryFragment extends Fragment {
             return;
         }
 
+        CollectionReference tasksRef = UserFirestorePaths.getUserCollection("tasks");
+        if (tasksRef == null) {
+            taskAdapter.submitList(new ArrayList<>());
+            showEmptyState(true);
+            return;
+        }
+
         stopTaskListener();
-        taskListener = FirebaseFirestore.getInstance()
-                .collection("tasks")
+        taskListener = tasksRef
                 .whereEqualTo("categoryId", categoryId)
                 .addSnapshotListener((snapshot, error) -> {
                     if (!isAdded() || taskAdapter == null) {

@@ -19,7 +19,9 @@ import com.example.ticktok.adapter.CalendarAdapter;
 import com.example.ticktok.adapter.EisenhowerTaskAdapter;
 import com.example.ticktok.adapter.TaskAdapter;
 import com.example.ticktok.model.Task;
+import com.example.ticktok.util.UserFirestorePaths;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
@@ -249,8 +251,14 @@ public class CalendarFragment extends Fragment {
         long dayStart = selectedDateMillis;
         long dayEnd = dayStart + MILLIS_PER_DAY;
 
-        taskListener = FirebaseFirestore.getInstance()
-                .collection("tasks")
+        CollectionReference tasksRef = UserFirestorePaths.getUserCollection("tasks");
+        if (tasksRef == null) {
+            taskAdapter.submitList(new ArrayList<>());
+            showEmptyState(true);
+            return;
+        }
+
+        taskListener = tasksRef
                 .whereGreaterThanOrEqualTo("dueDate", dayStart)
                 .whereLessThan("dueDate", dayEnd)
                 .addSnapshotListener((snapshot, error) -> {
@@ -295,8 +303,13 @@ public class CalendarFragment extends Fragment {
         nextMonthStartCalendar.add(Calendar.MONTH, 1);
         long nextMonthStart = nextMonthStartCalendar.getTimeInMillis();
 
-        monthTaskMarkerListener = FirebaseFirestore.getInstance()
-                .collection("tasks")
+        CollectionReference tasksRef = UserFirestorePaths.getUserCollection("tasks");
+        if (tasksRef == null) {
+            calendarAdapter.setDayPositionsWithTasks(new HashSet<>());
+            return;
+        }
+
+        monthTaskMarkerListener = tasksRef
                 .whereGreaterThanOrEqualTo("dueDate", monthStart)
                 .whereLessThan("dueDate", nextMonthStart)
                 .addSnapshotListener((snapshot, error) -> {
@@ -326,9 +339,14 @@ public class CalendarFragment extends Fragment {
             return;
         }
 
+        CollectionReference tasksRef = UserFirestorePaths.getUserCollection("tasks");
+        if (tasksRef == null) {
+            submitQuadrantLists(new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+            return;
+        }
+
         stopEisenhowerListener();
-        eisenhowerListener = FirebaseFirestore.getInstance()
-                .collection("tasks")
+        eisenhowerListener = tasksRef
                 .addSnapshotListener((snapshot, error) -> {
                     if (!isAdded() || quadrantAdapter1 == null || quadrantAdapter2 == null
                             || quadrantAdapter3 == null || quadrantAdapter4 == null) {

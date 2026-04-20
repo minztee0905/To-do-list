@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_dark"
+    android:padding="24dp">
+
+    <ImageButton
+        android:id="@+id/btnSettingsBack"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:background="@drawable/home_bg_button_circle"
+        android:contentDescription="@string/settings_back"
+        android:padding="10dp"
+        android:src="@drawable/home_ic_close"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="@color/text_white" />
+
+    <LinearLayout
+        android:id="@+id/layoutSettingsContent"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.42">
+
+        <ImageView
+            android:id="@+id/ivSettingsAvatar"
+            android:layout_width="88dp"
+            android:layout_height="88dp"
+            android:background="@drawable/bg_user_avatar_circle"
+            android:contentDescription="@string/menu_user_profile"
+            android:padding="20dp"
+            android:src="@drawable/home_ic_account"
+            app:tint="@color/text_white" />
+
+        <TextView
+            android:id="@+id/tvSettingsUserName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/menu_user_default_name"
+            android:textColor="@color/text_white"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnLogout"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="28dp"
+            android:text="@string/settings_logout"
+            android:textAllCaps="false"
+            android:textColor="@color/text_white"
+            android:textSize="16sp"
+            app:backgroundTint="#FF9800"
+            app:cornerRadius="22dp" />
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+

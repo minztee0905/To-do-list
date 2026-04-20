@@ -14,8 +14,10 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.ticktok.R;
 import com.example.ticktok.adapter.EventAdapter;
 import com.example.ticktok.model.Event;
+import com.example.ticktok.util.UserFirestorePaths;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
@@ -74,9 +76,15 @@ public class EventFragment extends Fragment {
             return;
         }
 
+        CollectionReference eventsRef = UserFirestorePaths.getUserCollection("events");
+        if (eventsRef == null) {
+            eventAdapter.submitList(new ArrayList<>());
+            showEmptyState(true);
+            return;
+        }
+
         stopEventListener();
-        eventListener = FirebaseFirestore.getInstance()
-                .collection("events")
+        eventListener = eventsRef
                 .orderBy("targetDate", Query.Direction.ASCENDING)
                 .addSnapshotListener((snapshot, error) -> {
                     if (!isAdded() || eventAdapter == null) {
