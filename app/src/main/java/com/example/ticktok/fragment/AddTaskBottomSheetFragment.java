@@ -33,6 +33,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 
 public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
     private static final String ARG_CATEGORY_ID = "arg_category_id";
+    private static final String ARG_PREFILL_DUE_DATE = "arg_prefill_due_date";
     private static final int PRIORITY_NONE = 0;
     private static final int PRIORITY_LOW = 1;
     private static final int PRIORITY_MEDIUM = 2;
@@ -53,12 +54,24 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
         setArguments(args);
     }
 
+    public AddTaskBottomSheetFragment(@Nullable String categoryId, @Nullable Long prefillDueDate) {
+        Bundle args = new Bundle();
+        args.putString(ARG_CATEGORY_ID, categoryId);
+        if (prefillDueDate != null && prefillDueDate > 0) {
+            args.putLong(ARG_PREFILL_DUE_DATE, prefillDueDate);
+        }
+        setArguments(args);
+    }
+
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Bundle args = getArguments();
         if (args != null) {
             categoryId = args.getString(ARG_CATEGORY_ID);
+            if (args.containsKey(ARG_PREFILL_DUE_DATE)) {
+                selectedDueDate = normalizeToStartOfDay(args.getLong(ARG_PREFILL_DUE_DATE, 0L));
+            }
         }
     }
 
@@ -75,7 +88,8 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
         }
 
         dialog.setOnShowListener(d -> {
-            FrameLayout bottomSheet = dialog.findViewById(com.google.android.material.R.id.design_bottom_sheet);
+            int bottomSheetId = getResources().getIdentifier("design_bottom_sheet", "id", "com.google.android.material");
+            FrameLayout bottomSheet = dialog.findViewById(bottomSheetId);
             if (bottomSheet == null) {
                 return;
             }
@@ -113,6 +127,9 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
         ImageButton btnCalendar = view.findViewById(R.id.btnCalendar);
         if (btnCalendar != null) {
             btnCalendar.setOnClickListener(v -> showDatePicker());
+            if (selectedDueDate > 0) {
+                btnCalendar.setColorFilter(android.graphics.Color.parseColor("#FF9800"));
+            }
         }
         btnFlag = view.findViewById(R.id.btnFlag);
         if (btnFlag != null) {
@@ -160,6 +177,9 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
 
     private void showDatePicker() {
         final java.util.Calendar c = java.util.Calendar.getInstance();
+        if (selectedDueDate > 0) {
+            c.setTimeInMillis(selectedDueDate);
+        }
         int year = c.get(java.util.Calendar.YEAR);
         int month = c.get(java.util.Calendar.MONTH);
         int day = c.get(java.util.Calendar.DAY_OF_MONTH);
@@ -169,7 +189,7 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
                 (view, year1, monthOfYear, dayOfMonth) -> {
                     java.util.Calendar selectedCalendar = java.util.Calendar.getInstance();
                     selectedCalendar.set(year1, monthOfYear, dayOfMonth);
-                    selectedDueDate = selectedCalendar.getTimeInMillis();
+                    selectedDueDate = normalizeToStartOfDay(selectedCalendar.getTimeInMillis());
 
                     View root = getView();
                     if (root != null) {
@@ -300,7 +320,9 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
 
         String title = extractTitle(rawInput);
         String description = extractDescription(rawInput);
-        Long dueDateValue = selectedDueDate > 0 ? selectedDueDate : null;
+        Long dueDateValue = selectedDueDate > 0
+                ? normalizeToStartOfDay(selectedDueDate)
+                : getStartOfTodayMillis();
 
         Task task = new Task(
                 title,
@@ -340,6 +362,23 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
             return "";
         }
         return lines[1].trim();
+    }
+
+    private long normalizeToStartOfDay(long millis) {
+        if (millis <= 0) {
+            return 0L;
+        }
+        java.util.Calendar calendar = java.util.Calendar.getInstance();
+        calendar.setTimeInMillis(millis);
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        calendar.set(java.util.Calendar.MINUTE, 0);
+        calendar.set(java.util.Calendar.SECOND, 0);
+        calendar.set(java.util.Calendar.MILLISECOND, 0);
+        return calendar.getTimeInMillis();
+    }
+
+    private long getStartOfTodayMillis() {
+        return normalizeToStartOfDay(System.currentTimeMillis());
     }
 
     private static class PriorityOption {

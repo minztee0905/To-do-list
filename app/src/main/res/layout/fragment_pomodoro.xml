@@ -22,7 +22,7 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="@android:color/transparent"
-            android:contentDescription="Lịch sử"
+            android:contentDescription="@string/pomodoro_history"
             android:padding="8dp"
             android:src="@drawable/home_ic_alarm"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -34,7 +34,7 @@
             android:id="@+id/tvPomodoroTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Pomodoro"
+            android:text="@string/pomodoro_title"
             android:textColor="@color/text_white"
             android:textSize="20sp"
             android:textStyle="bold"
@@ -48,7 +48,7 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="@android:color/transparent"
-            android:contentDescription="Thêm tùy chọn"
+            android:contentDescription="@string/pomodoro_more_options"
             android:padding="8dp"
             android:src="@drawable/home_icon_more"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -62,14 +62,15 @@
         android:id="@+id/tvTaskSelector"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="40dp"
-        android:drawableEnd="@drawable/home_ic_chevron_right"
+        android:layout_marginTop="100dp"
         android:drawablePadding="8dp"
-        android:text="Tập trung"
+        android:text="@string/pomodoro_mode_focus"
         android:textColor="#D0D0D0"
         android:textSize="18sp"
+        app:drawableEndCompat="@drawable/home_ic_chevron_right"
         app:drawableTint="#D0D0D0"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.528"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/pomodoroHeader" />
 
@@ -98,7 +99,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:text="05:00"
+            android:text="@string/pomodoro_default_timer"
             android:textColor="@color/text_white"
             android:textSize="64sp"
             android:textStyle="bold" />
@@ -113,7 +114,7 @@
         android:background="@drawable/bg_pomodoro_start_button"
         android:paddingStart="32dp"
         android:paddingEnd="32dp"
-        android:text="Bắt đầu"
+        android:text="@string/pomodoro_start"
         android:textAllCaps="false"
         android:textColor="@color/text_white"
         android:textSize="18sp"
@@ -121,6 +122,199 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/pomodoroClockContainer" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/btnResetPomodoro"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_pomodoro_start_button"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:text="@string/pomodoro_reset"
+        android:textAllCaps="false"
+        android:textColor="@color/text_white"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/btnStartPomodoro" />
+
+    <View
+        android:id="@+id/viewDurationPickerScrim"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#99000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardDurationPicker"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="#111111"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="6dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/pomodoro_duration_picker_title"
+                android:textColor="@color/text_white"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDuration5"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:tag="5"
+                    android:text="@string/pomodoro_duration_5"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_white"
+                    app:strokeColor="#606060" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDuration15"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:tag="15"
+                    android:text="@string/pomodoro_duration_15"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_white"
+                    app:strokeColor="#606060" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDuration25"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:tag="25"
+                    android:text="@string/pomodoro_duration_25"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_white"
+                    app:strokeColor="#606060" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDuration45"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:tag="45"
+                    android:text="@string/pomodoro_duration_45"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_white"
+                    app:strokeColor="#606060" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDuration90"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:tag="90"
+                    android:text="@string/pomodoro_duration_90"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_white"
+                    app:strokeColor="#606060" />
+            </LinearLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilCustomDuration"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                app:boxBackgroundColor="#1B1B1B"
+                app:boxStrokeColor="#606060"
+                app:hintTextColor="#A0A0A0">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etCustomDurationMinutes"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/pomodoro_duration_custom_hint"
+                    android:inputType="number"
+                    android:maxLines="1"
+                    android:textColor="@color/text_white" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:gravity="end"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCancelDuration"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/action_cancel"
+                    android:textAllCaps="false"
+                    android:textColor="#D0D0D0" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnApplyDuration"
+                    style="@style/Widget.MaterialComponents.Button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/pomodoro_apply_duration"
+                    android:textAllCaps="false"
+                    android:textColor="@color/text_white"
+                    app:backgroundTint="#FF9800" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
 

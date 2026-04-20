@@ -31,6 +31,7 @@ import com.example.ticktok.R;
 import com.example.ticktok.fragment.AddCategoryFragment;
 import com.example.ticktok.fragment.CategoryFragment;
 import com.example.ticktok.fragment.AddTaskBottomSheetFragment;
+import com.example.ticktok.fragment.AddEventBottomSheetFragment;
 import com.example.ticktok.adapter.MenuCategoryAdapter;
 import com.example.ticktok.fragment.CalendarFragment;
 import com.example.ticktok.fragment.EventFragment;
@@ -49,6 +50,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String STATE_SELECTED_MENU_TITLE = "state_selected_menu_title";
     private static final String TAG_ADD_TASK_SHEET = "add_task_sheet";
+    private static final String TAG_ADD_EVENT_SHEET = "add_event_sheet";
     private static final String TAG_ADD_CATEGORY_SHEET = "add_category_sheet";
 
     private DrawerLayout drawerLayout;
@@ -203,8 +205,17 @@ public class MainActivity extends AppCompatActivity {
         if (sharedFab == null) {
             return;
         }
-        sharedFab.setOnClickListener(v -> openAddTaskBottomSheet());
+        sharedFab.setOnClickListener(v -> openAddSheetForCurrentScreen());
         syncFabVisibility();
+    }
+
+    private void openAddSheetForCurrentScreen() {
+        ScreenState state = evaluateScreenState(normalizeTitle(selectedMenuTitle));
+        if (state.isEvent) {
+            openAddEventBottomSheet();
+            return;
+        }
+        openAddTaskBottomSheet();
     }
 
     private void syncFabVisibility() {
@@ -222,8 +233,27 @@ public class MainActivity extends AppCompatActivity {
         if (getSupportFragmentManager().findFragmentByTag(TAG_ADD_TASK_SHEET) != null) {
             return;
         }
-        AddTaskBottomSheetFragment sheet = new AddTaskBottomSheetFragment(selectedCategoryId);
+
+        Long prefillDueDate = null;
+        Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.contentFragmentContainer);
+        if (currentFragment instanceof CalendarFragment) {
+            prefillDueDate = ((CalendarFragment) currentFragment).getSelectedDateMillisForTask();
+        }
+
+        AddTaskBottomSheetFragment sheet = new AddTaskBottomSheetFragment(selectedCategoryId, prefillDueDate);
         sheet.show(getSupportFragmentManager(), TAG_ADD_TASK_SHEET);
+    }
+
+    private void openAddEventBottomSheet() {
+        Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.contentFragmentContainer);
+        if (!(currentFragment instanceof EventFragment)) {
+            return;
+        }
+        if (getSupportFragmentManager().findFragmentByTag(TAG_ADD_EVENT_SHEET) != null) {
+            return;
+        }
+        AddEventBottomSheetFragment sheet = new AddEventBottomSheetFragment();
+        sheet.show(getSupportFragmentManager(), TAG_ADD_EVENT_SHEET);
     }
 
     private void refreshCategories() {

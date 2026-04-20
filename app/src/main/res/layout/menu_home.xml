@@ -71,12 +71,6 @@
             android:textColor="@color/text_white"
             android:textSize="16sp" />
 
-        <ImageView
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:contentDescription="@string/menu_settings"
-            android:src="@drawable/home_ic_menu_more"
-            app:tint="@color/text_white" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

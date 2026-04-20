@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layoutTaskItemCompact"
+    android:layout_width="match_parent"
+    android:layout_height="30dp"
+    android:layout_marginBottom="2dp"
+    android:background="@drawable/bg_task_item"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp">
+
+    <CheckBox
+        android:id="@+id/cbTask"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:buttonTint="#A0A0A0"
+        android:minWidth="0dp"
+        android:minHeight="0dp"
+        android:padding="0dp"
+        android:scaleX="0.85"
+        android:scaleY="0.85"
+        android:text="" />
+
+    <TextView
+        android:id="@+id/tvTaskTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="2dp"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:text=""
+        android:textColor="@color/text_white"
+        android:textSize="10sp" />
+
+</LinearLayout>

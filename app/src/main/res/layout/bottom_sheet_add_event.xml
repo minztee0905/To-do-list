@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_add_task_sheet"
+    android:orientation="vertical"
+    android:paddingStart="20dp"
+    android:paddingTop="18dp"
+    android:paddingEnd="20dp"
+    android:paddingBottom="16dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/top_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp">
+
+        <ImageView
+            android:id="@+id/iv_close"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:contentDescription="@string/action_cancel"
+            android:src="@drawable/home_ic_close"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="#BDBDBD" />
+
+        <TextView
+            android:id="@+id/tv_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/add_event_title"
+            android:textColor="@color/text_white"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/tv_save"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/action_save"
+            android:textColor="@color/fab_orange"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <LinearLayout
+        android:id="@+id/ll_input_container"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="18dp"
+        android:background="@drawable/bg_inline_input_container"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp">
+
+        <EditText
+            android:id="@+id/et_event_icon"
+            android:layout_width="40dp"
+            android:layout_height="match_parent"
+            android:background="@null"
+            android:gravity="center"
+            android:hint="@string/add_event_icon_hint"
+            android:importantForAutofill="no"
+            android:inputType="text"
+            android:maxLength="2"
+            android:text="@string/event_item_icon_sample"
+            android:textColor="#9E9E9E"
+            android:textColorHint="#7A7A7A"
+            android:textSize="22sp" />
+
+        <EditText
+            android:id="@+id/et_event_name"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="@null"
+            android:hint="@string/add_event_name_hint"
+            android:importantForAutofill="no"
+            android:imeOptions="actionDone"
+            android:inputType="textCapSentences"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:textColor="@color/text_white"
+            android:textColorHint="#9E9E9E"
+            android:textCursorDrawable="@drawable/cursor_orange"
+            android:textSize="16sp" />
+
+        <ImageButton
+            android:id="@+id/btnEventCalendar"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/add_event_target_date"
+            android:padding="8dp"
+            android:src="@drawable/home_ic_calendar"
+            app:tint="@color/text_white" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tvEventDateValue"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="@string/add_event_date_empty"
+        android:textColor="#A0A0A0"
+        android:textSize="13sp" />
+
+    <FrameLayout
+        android:id="@+id/iconPickerContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_priority_popup"
+        android:padding="12dp"
+        android:visibility="gone">
+
+        <GridView
+            android:id="@+id/gvEventIcons"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:horizontalSpacing="10dp"
+            android:listSelector="@android:color/transparent"
+            android:numColumns="4"
+            android:stretchMode="columnWidth"
+            android:verticalSpacing="10dp" />
+    </FrameLayout>
+
+</LinearLayout>

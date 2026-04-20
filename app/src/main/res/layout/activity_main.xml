@@ -34,20 +34,6 @@
                 android:contentDescription="@string/menu_button"
                 android:scaleType="centerInside"
                 android:src="@drawable/home_ic_menu_more" />
-
-            <Space
-                android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1" />
-
-            <ImageButton
-                android:id="@+id/btnMore"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="@drawable/home_bg_button_circle"
-                android:contentDescription="@string/more_button"
-                android:scaleType="centerInside"
-                android:src="@drawable/home_icon_more" />
         </LinearLayout>
 
         <TextView
@@ -178,21 +164,3 @@
     </FrameLayout>
 
 </androidx.drawerlayout.widget.DrawerLayout>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
