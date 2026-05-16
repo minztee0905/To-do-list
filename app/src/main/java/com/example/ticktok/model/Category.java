@@ -2,6 +2,12 @@ package com.example.ticktok.model;
 
 public class Category {
 
+    /**
+     * Fixed virtual category shown in the drawer for all users.
+     * This category is not stored in Firestore and cannot be edited/deleted/reordered.
+     */
+    public static final String ID_WELCOME = "__welcome__";
+
     private String id;
     private String icon;
     private String title;

@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.ticktok.R;
@@ -18,6 +19,10 @@ import java.util.TimeZone;
 
 public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHolder> {
 
+    public interface OnEventLongPressListener {
+        void onEventLongPressed(@NonNull View anchorView, @NonNull Event event);
+    }
+
     private static final long MILLIS_PER_DAY = 24L * 60L * 60L * 1000L;
     private static final int COLOR_COUNTDOWN_ORANGE = Color.parseColor("#FF9800");
     private static final int COLOR_COUNTDOWN_RED = Color.parseColor("#F44336");
@@ -25,6 +30,17 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
     private static final int COLOR_COUNTDOWN_GRAY = Color.parseColor("#A0A0A0");
 
     private final List<Event> events = new ArrayList<>();
+
+    @Nullable
+    private final OnEventLongPressListener longPressListener;
+
+    public EventAdapter() {
+        this(null);
+    }
+
+    public EventAdapter(@Nullable OnEventLongPressListener longPressListener) {
+        this.longPressListener = longPressListener;
+    }
 
     @NonNull
     @Override
@@ -44,6 +60,14 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
         long daysRemaining = calculateDaysRemaining(targetDate);
         holder.tvEventCountdown.setText(formatCountdown(targetDate, daysRemaining));
         holder.tvEventCountdown.setTextColor(resolveCountdownColor(targetDate, daysRemaining));
+
+        holder.itemView.setOnLongClickListener(v -> {
+            if (longPressListener == null) {
+                return false;
+            }
+            longPressListener.onEventLongPressed(v, event);
+            return true;
+        });
     }
 
     @Override

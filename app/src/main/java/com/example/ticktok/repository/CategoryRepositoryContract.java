@@ -18,11 +18,28 @@ public interface CategoryRepositoryContract {
         void onError(Exception e);
     }
 
+    interface OnCategoryDeletedListener {
+        void onSuccess();
+
+        void onError(Exception e);
+    }
+
     void getCategories(@NonNull LoadCategoriesCallback callback);
 
     void addCategory(@NonNull String name,
                      @NonNull String icon,
                      @NonNull OnCategorySavedListener listener);
+
+    void updateCategory(@NonNull String categoryId,
+                        @NonNull String name,
+                        @NonNull String icon,
+                        @NonNull OnCategorySavedListener listener);
+
+    void deleteCategory(@NonNull String categoryId,
+                        @NonNull OnCategoryDeletedListener listener);
+
+    void updateCategoryOrders(@NonNull List<Category> categories,
+                              @NonNull OnCategorySavedListener listener);
 }
 
 

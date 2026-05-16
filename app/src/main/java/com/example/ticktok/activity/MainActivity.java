@@ -2,6 +2,7 @@ package com.example.ticktok.activity;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -12,7 +13,9 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.activity.EdgeToEdge;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.PopupMenu;
 import androidx.core.graphics.Insets;
 import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
@@ -25,8 +28,10 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 
 import com.example.ticktok.R;
 import com.example.ticktok.fragment.AddCategoryFragment;
@@ -42,9 +47,14 @@ import com.example.ticktok.fragment.WelcomeFragment;
 import com.example.ticktok.model.Category;
 import com.example.ticktok.repository.CategoryRepository;
 import com.example.ticktok.repository.CategoryRepositoryContract;
+import com.example.ticktok.util.UserFirestorePaths;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.WriteBatch;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -57,10 +67,13 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG_ADD_CATEGORY_SHEET = "add_category_sheet";
 
     private DrawerLayout drawerLayout;
+    @Nullable
+    private ImageButton btnMenu;
     private String selectedMenuTitle;
     private String selectedCategoryId;
     private CategoryRepositoryContract categoryRepository;
     private MenuCategoryAdapter categoryAdapter;
+    private ItemTouchHelper categoryItemTouchHelper;
     private final List<Category> menuCategories = new ArrayList<>();
     private FloatingActionButton sharedFab;
     private boolean isPomodoroScreenActive;
@@ -70,6 +83,8 @@ public class MainActivity extends AppCompatActivity {
     private ImageView dockIcon3;
     private ImageView dockIcon4;
     private ImageView dockIcon5;
+
+    private boolean showingBackButton;
 
     private static final class ScreenState {
         final boolean isPomodoro;
@@ -108,10 +123,14 @@ public class MainActivity extends AppCompatActivity {
             showContentForMenu(selectedMenuTitle);
         }
         setupMenuButton();
+        getSupportFragmentManager().addOnBackStackChangedListener(this::updateTopLeftNavigationButton);
         setupDrawerMenu();
         setupAddCategoryResultListener();
         setupSharedFab();
         setupDockNavigation();
+
+        // Ensure the correct icon is set after initial fragment transaction.
+        updateTopLeftNavigationButton();
     }
 
     @Override
@@ -157,10 +176,39 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupMenuButton() {
-        ImageButton btnMenu = findViewById(R.id.btnMenu);
-        if (btnMenu != null) {
-            btnMenu.setOnClickListener(v -> openDrawerMenu());
+        btnMenu = findViewById(R.id.btnMenu);
+        if (btnMenu == null) {
+            return;
         }
+
+        btnMenu.setOnClickListener(v -> {
+            if (shouldShowBackButton()) {
+                getOnBackPressedDispatcher().onBackPressed();
+            } else {
+                openDrawerMenu();
+            }
+        });
+
+        updateTopLeftNavigationButton();
+    }
+
+    private boolean shouldShowBackButton() {
+        return getSupportFragmentManager().getBackStackEntryCount() > 0;
+    }
+
+    private void updateTopLeftNavigationButton() {
+        if (btnMenu == null) {
+            return;
+        }
+
+        boolean showBack = shouldShowBackButton();
+        if (showBack == showingBackButton) {
+            return;
+        }
+        showingBackButton = showBack;
+
+        btnMenu.setImageResource(showBack ? R.drawable.home_ic_back : R.drawable.home_ic_menu_more);
+        btnMenu.setContentDescription(getString(showBack ? R.string.back_button : R.string.menu_button));
     }
 
     private void setupDrawerMenu() {
@@ -171,8 +219,59 @@ public class MainActivity extends AppCompatActivity {
         RecyclerView rvMenuCategories = findViewById(R.id.rvMenuCategories);
         if (rvMenuCategories != null) {
             rvMenuCategories.setLayoutManager(new LinearLayoutManager(this));
-            categoryAdapter = new MenuCategoryAdapter(this::onCategorySelected);
+            categoryAdapter = new MenuCategoryAdapter(
+                    this::onCategorySelected,
+                    this::onCategoryLongPressed,
+                    viewHolder -> {
+                        if (categoryItemTouchHelper != null) {
+                            categoryItemTouchHelper.startDrag(viewHolder);
+                        }
+                    }
+            );
             rvMenuCategories.setAdapter(categoryAdapter);
+
+            ItemTouchHelper.SimpleCallback callback = new ItemTouchHelper.SimpleCallback(
+                    ItemTouchHelper.UP | ItemTouchHelper.DOWN,
+                    0
+            ) {
+                @Override
+                public boolean onMove(@NonNull RecyclerView recyclerView,
+                                      @NonNull RecyclerView.ViewHolder viewHolder,
+                                      @NonNull RecyclerView.ViewHolder target) {
+                    if (categoryAdapter == null) {
+                        return false;
+                    }
+                    int from = viewHolder.getBindingAdapterPosition();
+                    int to = target.getBindingAdapterPosition();
+
+                    // Position 0 is reserved for the fixed Welcome category.
+                    if (from == 0 || to == 0) {
+                        return false;
+                    }
+                    categoryAdapter.moveItem(from, to);
+                    return true;
+                }
+
+                @Override
+                public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                    // no-op (we don't support swipe)
+                }
+
+                @Override
+                public void clearView(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
+                    super.clearView(recyclerView, viewHolder);
+                    persistMenuCategoryOrder();
+                }
+
+                @Override
+                public boolean isLongPressDragEnabled() {
+                    // Drag is started via the handle to avoid conflict with long-press edit/delete.
+                    return false;
+                }
+            };
+
+            categoryItemTouchHelper = new ItemTouchHelper(callback);
+            categoryItemTouchHelper.attachToRecyclerView(rvMenuCategories);
         }
 
         LinearLayout btnAdd = findViewById(R.id.btnAdd);
@@ -181,6 +280,46 @@ public class MainActivity extends AppCompatActivity {
         }
 
         refreshCategories();
+    }
+
+    private void persistMenuCategoryOrder() {
+        if (categoryRepository == null || categoryAdapter == null) {
+            return;
+        }
+        List<Category> items = categoryAdapter.getCurrentItems();
+        if (items.isEmpty()) {
+            return;
+        }
+
+        // Skip the fixed Welcome category (virtual, not stored in Firestore).
+        List<Category> mutable = new ArrayList<>();
+        for (Category c : items) {
+            if (c != null && !Category.ID_WELCOME.equals(c.getId())) {
+                mutable.add(c);
+            }
+        }
+        if (mutable.isEmpty()) {
+            return;
+        }
+
+        for (int i = 0; i < mutable.size(); i++) {
+            mutable.get(i).setOrder(i + 1);
+        }
+
+        categoryRepository.updateCategoryOrders(mutable, new CategoryRepositoryContract.OnCategorySavedListener() {
+            @Override
+            public void onSuccess() {
+                // Keep local cache consistent and refresh to ensure ordering is applied.
+                menuCategories.clear();
+                menuCategories.addAll(mutable);
+                refreshCategories();
+            }
+
+            @Override
+            public void onError(Exception e) {
+                Toast.makeText(MainActivity.this, R.string.error_save_category_order, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void setupProfileHeader() {
@@ -315,8 +454,24 @@ public class MainActivity extends AppCompatActivity {
             public void onLoaded(List<Category> categories) {
                 menuCategories.clear();
                 menuCategories.addAll(categories);
-                selectedCategoryId = resolveCategoryIdForTitle(normalizeTitle(selectedMenuTitle));
-                categoryAdapter.submitList(new ArrayList<>(menuCategories), selectedMenuTitle);
+
+                // Keep selectedCategoryId stable if we are currently on a category screen.
+                if (selectedCategoryId == null || selectedCategoryId.trim().isEmpty()) {
+                    selectedCategoryId = resolveCategoryIdForTitle(normalizeTitle(selectedMenuTitle));
+                }
+
+                // Always show Welcome as the first (fixed) item.
+                List<Category> display = new ArrayList<>();
+                display.add(createWelcomeDrawerCategory());
+                display.addAll(menuCategories);
+
+                String highlightId = selectedCategoryId;
+                if ((highlightId == null || highlightId.trim().isEmpty())
+                        && getString(R.string.menu_welcome).equalsIgnoreCase(normalizeTitle(selectedMenuTitle))) {
+                    highlightId = Category.ID_WELCOME;
+                }
+
+                categoryAdapter.submitList(display, selectedMenuTitle, highlightId);
             }
 
             @Override
@@ -330,13 +485,206 @@ public class MainActivity extends AppCompatActivity {
         getSupportFragmentManager().setFragmentResultListener(
                 AddCategoryFragment.RESULT_KEY_ADD_CATEGORY,
                 this,
-                (requestKey, result) -> refreshCategories()
+                (requestKey, result) -> {
+                    String updatedCategoryId = result.getString(AddCategoryFragment.RESULT_KEY_CATEGORY_ID);
+                    String updatedName = result.getString(AddCategoryFragment.RESULT_KEY_CATEGORY_NAME);
+                    if (updatedCategoryId != null
+                            && updatedCategoryId.equals(selectedCategoryId)
+                            && updatedName != null
+                            && !updatedName.trim().isEmpty()) {
+                        selectedMenuTitle = updatedName.trim();
+                        updateHeader(selectedMenuTitle);
+                    }
+                    refreshCategories();
+                }
         );
     }
 
     private void onCategorySelected(Category category) {
+        if (category == null) {
+            return;
+        }
+
+        // If the user navigates via the drawer while a Welcome filter is open, clear that back stack
+        // so the top-left button returns to the menu icon and back won't jump to a stale filter.
+        clearContentBackStackIfNeeded();
+
+        if (Category.ID_WELCOME.equals(category.getId())) {
+            selectedCategoryId = null;
+            navigateTo(getString(R.string.menu_welcome), true, true);
+            return;
+        }
+
+        // Navigate by ID to avoid title collisions (e.g., a user category named "Welcome").
         selectedCategoryId = category.getId();
-        navigateTo(category.getTitle(), true, true);
+        selectedMenuTitle = normalizeTitle(category.getTitle());
+        updateHeader(selectedMenuTitle);
+        applyScreenChrome(selectedMenuTitle);
+        updateDockSelection(selectedMenuTitle);
+        showCategoryScreen(selectedMenuTitle, selectedCategoryId);
+
+        if (drawerLayout != null) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+        }
+        refreshCategories();
+    }
+
+    private void onCategoryLongPressed(@NonNull View anchorView, @NonNull Category category) {
+        if (Category.ID_WELCOME.equals(category.getId())) {
+            return;
+        }
+        showCategoryActionsPopup(anchorView, category);
+    }
+
+    @NonNull
+    private Category createWelcomeDrawerCategory() {
+        // Virtual category: not stored in Firestore.
+        return new Category(Category.ID_WELCOME, "🏠", getString(R.string.menu_welcome), 0);
+    }
+
+    private void showCategoryScreen(@NonNull String title, @Nullable String categoryId) {
+        Fragment fragment = CategoryFragment.newInstance(title, categoryId);
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.contentFragmentContainer, fragment)
+                .commit();
+    }
+
+    private void showCategoryActionsPopup(@NonNull View anchorView, @NonNull Category category) {
+        PopupMenu popupMenu = new PopupMenu(this, anchorView);
+        popupMenu.getMenuInflater().inflate(R.menu.menu_category_actions, popupMenu.getMenu());
+        popupMenu.setOnMenuItemClickListener(item -> handleCategoryAction(item, category));
+        popupMenu.show();
+    }
+
+    private boolean handleCategoryAction(@NonNull MenuItem item, @NonNull Category category) {
+        int id = item.getItemId();
+        if (id == R.id.action_category_edit) {
+            openEditCategoryScreen(category);
+            return true;
+        }
+        if (id == R.id.action_category_delete) {
+            confirmDeleteCategory(category);
+            return true;
+        }
+        return false;
+    }
+
+    private void openEditCategoryScreen(@NonNull Category category) {
+        if (isAddCategorySheetShowing()) {
+            return;
+        }
+        updateFabVisibility(true);
+        AddCategoryFragment sheet = AddCategoryFragment.newInstanceForEdit(
+                category.getId(),
+                category.getTitle(),
+                category.getIcon()
+        );
+        sheet.show(getSupportFragmentManager(), TAG_ADD_CATEGORY_SHEET);
+    }
+
+    private void confirmDeleteCategory(@NonNull Category category) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.delete_category_title)
+                .setMessage(getString(R.string.delete_category_message, category.getTitle()))
+                .setNegativeButton(R.string.action_cancel, null)
+                .setPositiveButton(R.string.action_delete, (dialog, which) -> deleteCategory(category))
+                .show();
+    }
+
+    private void deleteCategory(@NonNull Category category) {
+        if (categoryRepository == null) {
+            categoryRepository = new CategoryRepository();
+        }
+        String categoryId = category.getId();
+        if (categoryId == null || categoryId.trim().isEmpty()) {
+            Toast.makeText(this, R.string.delete_category_failed, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        deleteTasksForCategory(categoryId, new FirestoreVoidCallback() {
+            @Override
+            public void onSuccess() {
+                categoryRepository.deleteCategory(categoryId, new CategoryRepositoryContract.OnCategoryDeletedListener() {
+                    @Override
+                    public void onSuccess() {
+                        Toast.makeText(MainActivity.this, R.string.delete_category_success, Toast.LENGTH_SHORT).show();
+                        boolean wasSelected = categoryId.equals(selectedCategoryId);
+                        if (wasSelected) {
+                            selectedCategoryId = null;
+                            navigateTo(getString(R.string.menu_welcome), true, true);
+                        } else {
+                            refreshCategories();
+                        }
+                    }
+
+                    @Override
+                    public void onError(Exception e) {
+                        Toast.makeText(MainActivity.this, R.string.delete_category_failed, Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+
+            @Override
+            public void onError(@NonNull Exception e) {
+                Toast.makeText(MainActivity.this, R.string.delete_category_failed, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private interface FirestoreVoidCallback {
+        void onSuccess();
+
+        void onError(@NonNull Exception e);
+    }
+
+    private void deleteTasksForCategory(@NonNull String categoryId, @NonNull FirestoreVoidCallback callback) {
+        CollectionReference tasksRef = UserFirestorePaths.getUserCollection("tasks");
+        if (tasksRef == null) {
+            callback.onSuccess();
+            return;
+        }
+
+        tasksRef.whereEqualTo("categoryId", categoryId)
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    List<DocumentSnapshot> documents = snapshot.getDocuments();
+                    if (documents.isEmpty()) {
+                        callback.onSuccess();
+                        return;
+                    }
+                    deleteTasksInBatches(documents, 0, callback);
+                })
+                .addOnFailureListener(error -> callback.onError(asException(error)));
+    }
+
+    private void deleteTasksInBatches(@NonNull List<DocumentSnapshot> documents,
+                                     int startIndex,
+                                     @NonNull FirestoreVoidCallback callback) {
+        if (startIndex >= documents.size()) {
+            callback.onSuccess();
+            return;
+        }
+
+        int endIndexExclusive = Math.min(startIndex + 450, documents.size());
+        WriteBatch batch = FirebaseFirestore.getInstance().batch();
+        for (int i = startIndex; i < endIndexExclusive; i++) {
+            batch.delete(documents.get(i).getReference());
+        }
+
+        batch.commit()
+                .addOnSuccessListener(unused -> deleteTasksInBatches(documents, endIndexExclusive, callback))
+                .addOnFailureListener(error -> callback.onError(asException(error)));
+    }
+
+    @NonNull
+    private Exception asException(@NonNull Exception e) {
+        return e;
+    }
+
+    @NonNull
+    private Exception asException(@NonNull Throwable throwable) {
+        return throwable instanceof Exception ? (Exception) throwable : new Exception(throwable);
     }
 
     private void updateHeader(String title) {
@@ -443,6 +791,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void navigateTo(String title, boolean closeDrawer, boolean refreshCategoryList) {
+        clearContentBackStackIfNeeded();
         selectedMenuTitle = normalizeTitle(title);
         selectedCategoryId = resolveCategoryIdForTitle(selectedMenuTitle);
         updateHeader(selectedMenuTitle);
@@ -452,6 +801,16 @@ public class MainActivity extends AppCompatActivity {
         }
         if (refreshCategoryList) {
             refreshCategories();
+        }
+    }
+
+    private void clearContentBackStackIfNeeded() {
+        FragmentManager fm = getSupportFragmentManager();
+        if (fm.isStateSaved()) {
+            return;
+        }
+        if (fm.getBackStackEntryCount() > 0) {
+            fm.popBackStackImmediate(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
         }
     }
 
@@ -576,5 +935,31 @@ public class MainActivity extends AppCompatActivity {
         if (drawerLayout != null) {
             drawerLayout.openDrawer(GravityCompat.START);
         }
+    }
+
+    /**
+     * Allows child fragments (e.g., Welcome dashboard filters) to update the header title and chrome
+     * without having to go through the drawer menu selection logic.
+     */
+    public void setScreenTitle(@NonNull String title) {
+        selectedMenuTitle = normalizeTitle(title);
+        // Filters are not tied to a single category.
+        selectedCategoryId = null;
+        updateHeader(selectedMenuTitle);
+        applyScreenChrome(selectedMenuTitle);
+        updateDockSelection(selectedMenuTitle);
+    }
+
+    /**
+     * Opens a fragment on top of the current stack and updates the header title accordingly.
+     * This is used by Welcome dashboard cards.
+     */
+    public void openFragmentWithTitle(@NonNull Fragment fragment, @NonNull String title) {
+        setScreenTitle(title);
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.contentFragmentContainer, fragment)
+                .addToBackStack(null)
+                .commit();
     }
 }

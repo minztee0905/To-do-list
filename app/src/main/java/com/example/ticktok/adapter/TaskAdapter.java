@@ -1,24 +1,60 @@
 package com.example.ticktok.adapter;
 
-import android.graphics.Paint;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.ticktok.R;
 import com.example.ticktok.model.Task;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder> {
 
+    public interface OnTaskMoreClickListener {
+        void onTaskMoreClick(@NonNull View anchorView, @NonNull Task task);
+    }
+
+    public interface OnStartDragListener {
+        void onStartDrag(@NonNull RecyclerView.ViewHolder viewHolder);
+    }
+
+    public interface OnTaskCheckedChangeListener {
+        void onTaskCheckedChanged(@NonNull Task task, boolean isChecked);
+    }
+
     private final List<Task> tasks = new ArrayList<>();
+    @Nullable
+    private final OnTaskMoreClickListener moreClickListener;
+    @Nullable
+    private final OnStartDragListener dragListener;
+    @Nullable
+    private final OnTaskCheckedChangeListener checkedChangeListener;
+
+    public TaskAdapter() {
+        this(null);
+    }
+
+    public TaskAdapter(@Nullable OnTaskMoreClickListener moreClickListener) {
+        this(moreClickListener, null, null);
+    }
+
+    public TaskAdapter(@Nullable OnTaskMoreClickListener moreClickListener,
+                       @Nullable OnStartDragListener dragListener,
+                       @Nullable OnTaskCheckedChangeListener checkedChangeListener) {
+        this.moreClickListener = moreClickListener;
+        this.dragListener = dragListener;
+        this.checkedChangeListener = checkedChangeListener;
+    }
 
     @NonNull
     @Override
@@ -35,13 +71,37 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
         holder.cbTask.setOnCheckedChangeListener(null);
         holder.cbTask.setChecked(task.isCompleted());
 
+        holder.cbTask.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            // Update local state immediately so RecyclerView rebinds don't revert the UI.
+            task.setCompleted(isChecked);
+            if (checkedChangeListener != null) {
+                checkedChangeListener.onTaskCheckedChanged(task, isChecked);
+            }
+            notifyItemChanged(holder.getBindingAdapterPosition());
+        });
+
         if (task.isCompleted()) {
-            holder.tvTaskTitle.setPaintFlags(holder.tvTaskTitle.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
             holder.tvTaskTitle.setAlpha(0.6f);
         } else {
-            holder.tvTaskTitle.setPaintFlags(holder.tvTaskTitle.getPaintFlags() & (~Paint.STRIKE_THRU_TEXT_FLAG));
             holder.tvTaskTitle.setAlpha(1f);
         }
+
+        if (holder.ivTaskMore != null) {
+            holder.ivTaskMore.setOnClickListener(v -> {
+                if (moreClickListener != null) {
+                    moreClickListener.onTaskMoreClick(v, task);
+                }
+            });
+        }
+
+        // Long-press on body to start drag reorder.
+        holder.itemView.setOnLongClickListener(v -> {
+            if (dragListener == null) {
+                return false;
+            }
+            dragListener.onStartDrag(holder);
+            return true;
+        });
     }
 
     @Override
@@ -55,14 +115,33 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
         notifyDataSetChanged();
     }
 
+    public void moveItem(int fromPosition, int toPosition) {
+        if (fromPosition < 0 || fromPosition >= tasks.size()
+                || toPosition < 0 || toPosition >= tasks.size()) {
+            return;
+        }
+        if (fromPosition == toPosition) {
+            return;
+        }
+        Collections.swap(tasks, fromPosition, toPosition);
+        notifyItemMoved(fromPosition, toPosition);
+    }
+
+    @NonNull
+    public List<Task> getCurrentItems() {
+        return new ArrayList<>(tasks);
+    }
+
     static class TaskViewHolder extends RecyclerView.ViewHolder {
         final CheckBox cbTask;
         final TextView tvTaskTitle;
+        final ImageView ivTaskMore;
 
         TaskViewHolder(@NonNull View itemView) {
             super(itemView);
             cbTask = itemView.findViewById(R.id.cbTask);
             tvTaskTitle = itemView.findViewById(R.id.tvTaskTitle);
+            ivTaskMore = itemView.findViewById(R.id.ivTaskMore);
         }
     }
 }

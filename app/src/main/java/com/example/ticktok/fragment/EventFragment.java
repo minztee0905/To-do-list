@@ -2,11 +2,15 @@ package com.example.ticktok.fragment;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.widget.PopupMenu;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -15,7 +19,6 @@ import com.example.ticktok.R;
 import com.example.ticktok.adapter.EventAdapter;
 import com.example.ticktok.model.Event;
 import com.example.ticktok.util.UserFirestorePaths;
-import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.Query;
@@ -30,6 +33,8 @@ public class EventFragment extends Fragment {
     private EventAdapter eventAdapter;
     private View layoutEmptyEvents;
     private ListenerRegistration eventListener;
+
+    private static final String TAG_EDIT_EVENT_SHEET = "edit_event_sheet";
 
     @Nullable
     @Override
@@ -46,9 +51,86 @@ public class EventFragment extends Fragment {
         RecyclerView rvEvents = view.findViewById(R.id.rvEvents);
         layoutEmptyEvents = view.findViewById(R.id.layoutEmptyEvents);
 
-        eventAdapter = new EventAdapter();
+        eventAdapter = new EventAdapter(this::onEventLongPressed);
         rvEvents.setLayoutManager(new LinearLayoutManager(requireContext()));
         rvEvents.setAdapter(eventAdapter);
+    }
+
+    private void onEventLongPressed(@NonNull View anchorView, @NonNull Event event) {
+        PopupMenu popupMenu = new PopupMenu(requireContext(), anchorView);
+        popupMenu.getMenuInflater().inflate(R.menu.menu_event_actions, popupMenu.getMenu());
+        popupMenu.setOnMenuItemClickListener(item -> handleEventAction(item, event));
+        popupMenu.show();
+    }
+
+    private boolean handleEventAction(@NonNull MenuItem item, @NonNull Event event) {
+        int id = item.getItemId();
+        if (id == R.id.action_event_edit) {
+            openEditEventSheet(event);
+            return true;
+        }
+        if (id == R.id.action_event_delete) {
+            confirmDeleteEvent(event);
+            return true;
+        }
+        return false;
+    }
+
+    private void openEditEventSheet(@NonNull Event event) {
+        if (!isAdded()) {
+            return;
+        }
+        if (event.getId() == null || event.getId().trim().isEmpty()) {
+            Toast.makeText(requireContext(), R.string.delete_event_failed, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (requireActivity().getSupportFragmentManager().findFragmentByTag(TAG_EDIT_EVENT_SHEET) != null) {
+            return;
+        }
+
+        AddEventBottomSheetFragment sheet = AddEventBottomSheetFragment.newInstanceForEdit(
+                event.getId(),
+                event.getTitle(),
+                event.getIcon(),
+                event.getTargetDate()
+        );
+        sheet.show(requireActivity().getSupportFragmentManager(), TAG_EDIT_EVENT_SHEET);
+    }
+
+    private void confirmDeleteEvent(@NonNull Event event) {
+        String title = event.getTitle() == null ? "" : event.getTitle();
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.delete_event_title)
+                .setMessage(getString(R.string.delete_event_message, title))
+                .setNegativeButton(R.string.action_cancel, null)
+                .setPositiveButton(R.string.action_delete, (dialog, which) -> deleteEvent(event))
+                .show();
+    }
+
+    private void deleteEvent(@NonNull Event event) {
+        if (event.getId() == null || event.getId().trim().isEmpty()) {
+            Toast.makeText(requireContext(), R.string.delete_event_failed, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        CollectionReference eventsRef = UserFirestorePaths.getUserCollection("events");
+        if (eventsRef == null) {
+            Toast.makeText(requireContext(), R.string.auth_error_login_required, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        eventsRef.document(event.getId().trim())
+                .delete()
+                .addOnSuccessListener(unused -> {
+                    if (isAdded()) {
+                        Toast.makeText(requireContext(), R.string.delete_event_success, Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    if (isAdded()) {
+                        Toast.makeText(requireContext(), R.string.delete_event_failed, Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     @Override

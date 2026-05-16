@@ -27,7 +27,6 @@ import com.example.ticktok.R;
 import com.example.ticktok.model.Task;
 import com.example.ticktok.util.UserFirestorePaths;
 import com.google.firebase.firestore.FieldValue;
-import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
@@ -36,6 +35,15 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
     private static final String ARG_CATEGORY_ID = "arg_category_id";
     private static final String ARG_PREFILL_DUE_DATE = "arg_prefill_due_date";
+    private static final String ARG_MODE = "arg_mode";
+    private static final String ARG_TASK_ID = "arg_task_id";
+    private static final String ARG_TASK_TITLE = "arg_task_title";
+    private static final String ARG_TASK_DESCRIPTION = "arg_task_description";
+    private static final String ARG_TASK_PRIORITY = "arg_task_priority";
+    private static final String ARG_TASK_DUE_DATE = "arg_task_due_date";
+
+    private static final int MODE_ADD = 0;
+    private static final int MODE_EDIT = 1;
     private static final int PRIORITY_NONE = 0;
     private static final int PRIORITY_LOW = 1;
     private static final int PRIORITY_MEDIUM = 2;
@@ -46,6 +54,14 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
     private EditText taskInput;
     private ImageButton btnFlag;
     private String categoryId;
+
+    private boolean isEditMode;
+    @Nullable
+    private String editingTaskId;
+    @Nullable
+    private String prefillTitle;
+    @Nullable
+    private String prefillDescription;
 
     public AddTaskBottomSheetFragment() {
     }
@@ -65,11 +81,40 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
         setArguments(args);
     }
 
+    @NonNull
+    public static AddTaskBottomSheetFragment newInstanceForEdit(@NonNull Task task) {
+        AddTaskBottomSheetFragment fragment = new AddTaskBottomSheetFragment();
+        Bundle args = new Bundle();
+        args.putInt(ARG_MODE, MODE_EDIT);
+        args.putString(ARG_TASK_ID, task.getId());
+        args.putString(ARG_CATEGORY_ID, task.getCategoryId());
+        args.putString(ARG_TASK_TITLE, task.getTitle());
+        args.putString(ARG_TASK_DESCRIPTION, task.getDescription());
+        args.putInt(ARG_TASK_PRIORITY, task.getPriority());
+        if (task.getDueDate() != null && task.getDueDate() > 0) {
+            args.putLong(ARG_TASK_DUE_DATE, task.getDueDate());
+        }
+        fragment.setArguments(args);
+        return fragment;
+    }
+
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Bundle args = getArguments();
         if (args != null) {
+            int mode = args.getInt(ARG_MODE, MODE_ADD);
+            isEditMode = mode == MODE_EDIT;
+            if (isEditMode) {
+                editingTaskId = args.getString(ARG_TASK_ID);
+                prefillTitle = args.getString(ARG_TASK_TITLE);
+                prefillDescription = args.getString(ARG_TASK_DESCRIPTION);
+                selectedPriority = args.getInt(ARG_TASK_PRIORITY, PRIORITY_NONE);
+                if (args.containsKey(ARG_TASK_DUE_DATE)) {
+                    selectedDueDate = normalizeToStartOfDay(args.getLong(ARG_TASK_DUE_DATE, 0L));
+                }
+            }
+
             categoryId = args.getString(ARG_CATEGORY_ID);
             if (args.containsKey(ARG_PREFILL_DUE_DATE)) {
                 selectedDueDate = normalizeToStartOfDay(args.getLong(ARG_PREFILL_DUE_DATE, 0L));
@@ -138,19 +183,29 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
             btnFlag.setOnClickListener(v -> showPriorityMenu(v));
             applySelectedPriorityColor();
         }
+
+        if (isEditMode) {
+            String title = prefillTitle == null ? "" : prefillTitle.trim();
+            String desc = prefillDescription == null ? "" : prefillDescription.trim();
+            String combined;
+            if (!desc.isEmpty()) {
+                combined = title + "\n" + desc;
+            } else {
+                combined = title;
+            }
+            taskInput.setText(combined);
+            taskInput.setSelection(taskInput.getText() != null ? taskInput.getText().length() : 0);
+        }
+
+        updateSendMicVisibility(btnMicrophone, btnSend, taskInput.getText());
+
         taskInput.addTextChangedListener(new android.text.TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if (!s.toString().trim().isEmpty()) {
-                    if (btnMicrophone != null) btnMicrophone.setVisibility(View.GONE);
-                    if (btnSend != null) btnSend.setVisibility(View.VISIBLE);
-                } else {
-                    if (btnMicrophone != null) btnMicrophone.setVisibility(View.VISIBLE);
-                    if (btnSend != null) btnSend.setVisibility(View.GONE);
-                }
+                updateSendMicVisibility(btnMicrophone, btnSend, s);
             }
 
             @Override
@@ -326,35 +381,70 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
                 ? normalizeToStartOfDay(selectedDueDate)
                 : getStartOfTodayMillis();
 
-        Task task = new Task(
-                title,
-                description,
-                categoryId,
-                selectedPriority,
-                dueDateValue,
-                0
-        );
-        task.setCompleted(false);
-        task.setOrder(0);
-        task.setCreatedAt(null);
-
         CollectionReference tasksRef = UserFirestorePaths.getUserCollection("tasks");
         if (tasksRef == null) {
             Toast.makeText(requireContext(), R.string.auth_error_login_required, Toast.LENGTH_SHORT).show();
             return;
         }
 
+        if (isEditMode) {
+            if (editingTaskId == null || editingTaskId.trim().isEmpty()) {
+                Toast.makeText(requireContext(), R.string.delete_task_failed, Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            java.util.Map<String, Object> updates = new java.util.HashMap<>();
+            updates.put("title", title);
+            updates.put("description", description);
+            updates.put("priority", selectedPriority);
+            updates.put("dueDate", dueDateValue);
+            updates.put("categoryId", categoryId);
+
+            tasksRef.document(editingTaskId.trim())
+                    .update(updates)
+                    .addOnSuccessListener(unused -> {
+                        Toast.makeText(requireContext(), R.string.edit_task_success, Toast.LENGTH_SHORT).show();
+                        dismiss();
+                    })
+                    .addOnFailureListener(e -> Toast.makeText(requireContext(), e.getMessage(), Toast.LENGTH_SHORT).show());
+            return;
+        }
+
+        addNewTaskWithNextOrder(tasksRef, title, description, dueDateValue);
+    }
+
+    private void addNewTaskWithNextOrder(@NonNull CollectionReference tasksRef,
+                                        @NonNull String title,
+                                        @NonNull String description,
+                                        @NonNull Long dueDateValue) {
+        // Use a time-based order to avoid Firestore composite-index requirements.
+        // (Drag & drop will later rewrite orders to 1..N anyway.)
+        int nextOrder = (int) (System.currentTimeMillis() / 1000L);
+        Task task = new Task(title, description, categoryId, selectedPriority, dueDateValue, nextOrder);
+        task.setCompleted(false);
+        task.setOrder(nextOrder);
+        task.setCreatedAt(null);
+
         tasksRef
                 .add(task)
                 .addOnSuccessListener(documentReference -> {
-                    // Force server time for createdAt to avoid client clock drift.
                     documentReference.update("createdAt", FieldValue.serverTimestamp());
-                    Toast.makeText(requireContext(), "Đã thêm công việc", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(requireContext(), R.string.add_task_success, Toast.LENGTH_SHORT).show();
                     dismiss();
                 })
-                .addOnFailureListener(e ->
-                        Toast.makeText(requireContext(), e.getMessage(), Toast.LENGTH_SHORT).show()
-                );
+                .addOnFailureListener(e -> Toast.makeText(requireContext(), e.getMessage(), Toast.LENGTH_SHORT).show());
+    }
+
+    private void updateSendMicVisibility(@Nullable ImageButton btnMicrophone,
+                                        @Nullable ImageButton btnSend,
+                                        @Nullable CharSequence text) {
+        boolean hasText = text != null && !text.toString().trim().isEmpty();
+        if (btnMicrophone != null) {
+            btnMicrophone.setVisibility(hasText ? View.GONE : View.VISIBLE);
+        }
+        if (btnSend != null) {
+            btnSend.setVisibility(hasText ? View.VISIBLE : View.GONE);
+        }
     }
 
     private String extractTitle(String rawInput) {

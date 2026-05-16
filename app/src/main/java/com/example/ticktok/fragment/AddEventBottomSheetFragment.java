@@ -33,7 +33,6 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.firebase.firestore.FieldValue;
-import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.CollectionReference;
 
 import java.text.SimpleDateFormat;
@@ -44,8 +43,13 @@ import java.util.Locale;
 public class AddEventBottomSheetFragment extends BottomSheetDialogFragment {
 
     private static final String DEFAULT_EVENT_ICON = "●";
+    private static final String ARG_EDIT_EVENT_ID = "arg_edit_event_id";
+    private static final String ARG_EDIT_EVENT_TITLE = "arg_edit_event_title";
+    private static final String ARG_EDIT_EVENT_ICON = "arg_edit_event_icon";
+    private static final String ARG_EDIT_EVENT_TARGET_DATE = "arg_edit_event_target_date";
 
     private ImageView ivClose;
+    private TextView tvTitle;
     private TextView tvSave;
     private EditText etEventIcon;
     private EditText etEventName;
@@ -59,6 +63,10 @@ public class AddEventBottomSheetFragment extends BottomSheetDialogFragment {
     private boolean isSaving;
     private IconGridAdapter iconGridAdapter;
 
+    private boolean isEditMode;
+    @Nullable
+    private String editingEventId;
+
     private final IconOption[] iconOptions = new IconOption[] {
             new IconOption("●", "Mặc định"),
             new IconOption("📌", "Ghim"),
@@ -71,6 +79,36 @@ public class AddEventBottomSheetFragment extends BottomSheetDialogFragment {
     };
 
     public AddEventBottomSheetFragment() {
+    }
+
+    @NonNull
+    public static AddEventBottomSheetFragment newInstanceForEdit(@NonNull String eventId,
+                                                                 @Nullable String title,
+                                                                 @Nullable String icon,
+                                                                 @Nullable Long targetDate) {
+        AddEventBottomSheetFragment fragment = new AddEventBottomSheetFragment();
+        Bundle args = new Bundle();
+        args.putString(ARG_EDIT_EVENT_ID, eventId);
+        args.putString(ARG_EDIT_EVENT_TITLE, title);
+        args.putString(ARG_EDIT_EVENT_ICON, icon);
+        if (targetDate != null) {
+            args.putLong(ARG_EDIT_EVENT_TARGET_DATE, targetDate);
+        }
+        fragment.setArguments(args);
+        return fragment;
+    }
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        Bundle args = getArguments();
+        if (args != null) {
+            String id = args.getString(ARG_EDIT_EVENT_ID);
+            if (id != null && !id.trim().isEmpty()) {
+                isEditMode = true;
+                editingEventId = id.trim();
+            }
+        }
     }
 
     @NonNull
@@ -114,6 +152,7 @@ public class AddEventBottomSheetFragment extends BottomSheetDialogFragment {
         super.onViewCreated(view, savedInstanceState);
 
         initViews(view);
+        bindEditArgumentsIfNeeded();
         setupListeners();
         updateSelectedDateLabel();
         updateSaveEnabledState();
@@ -128,6 +167,7 @@ public class AddEventBottomSheetFragment extends BottomSheetDialogFragment {
     public void onDestroyView() {
         super.onDestroyView();
         ivClose = null;
+        tvTitle = null;
         tvSave = null;
         etEventIcon = null;
         etEventName = null;
@@ -140,6 +180,7 @@ public class AddEventBottomSheetFragment extends BottomSheetDialogFragment {
 
     private void initViews(@NonNull View view) {
         ivClose = view.findViewById(R.id.iv_close);
+        tvTitle = view.findViewById(R.id.tv_title);
         tvSave = view.findViewById(R.id.tv_save);
         etEventIcon = view.findViewById(R.id.et_event_icon);
         etEventName = view.findViewById(R.id.et_event_name);
@@ -150,6 +191,43 @@ public class AddEventBottomSheetFragment extends BottomSheetDialogFragment {
 
         if (etEventIcon != null) {
             etEventIcon.setText(DEFAULT_EVENT_ICON);
+        }
+
+        if (tvTitle != null) {
+            tvTitle.setText(isEditMode ? R.string.edit_event_title : R.string.add_event_title);
+        }
+    }
+
+    private void bindEditArgumentsIfNeeded() {
+        if (!isEditMode) {
+            return;
+        }
+        Bundle args = getArguments();
+        if (args == null) {
+            return;
+        }
+
+        String title = args.getString(ARG_EDIT_EVENT_TITLE);
+        String icon = args.getString(ARG_EDIT_EVENT_ICON);
+        long target = args.containsKey(ARG_EDIT_EVENT_TARGET_DATE)
+                ? args.getLong(ARG_EDIT_EVENT_TARGET_DATE)
+                : 0L;
+
+        if (icon != null && !icon.trim().isEmpty()) {
+            selectedEventIcon = icon.trim();
+        }
+        if (etEventIcon != null) {
+            etEventIcon.setText(selectedEventIcon);
+        }
+        if (title != null && etEventName != null) {
+            etEventName.setText(title);
+            etEventName.setSelection(title.length());
+        }
+        if (target > 0) {
+            selectedTargetDate = target;
+            if (btnEventCalendar != null) {
+                btnEventCalendar.setColorFilter(Color.parseColor("#FF9800"));
+            }
         }
     }
 
@@ -210,9 +288,6 @@ public class AddEventBottomSheetFragment extends BottomSheetDialogFragment {
         selectedEventIcon = iconInput.isEmpty() ? DEFAULT_EVENT_ICON : iconInput;
         Long targetDate = selectedTargetDate > 0 ? selectedTargetDate : null;
 
-        Event event = new Event(title, selectedEventIcon, targetDate);
-        event.setCreatedAt(null);
-
         setSavingState(true);
         CollectionReference eventsRef = UserFirestorePaths.getUserCollection("events");
         if (eventsRef == null) {
@@ -220,6 +295,41 @@ public class AddEventBottomSheetFragment extends BottomSheetDialogFragment {
             Toast.makeText(requireContext(), R.string.auth_error_login_required, Toast.LENGTH_SHORT).show();
             return;
         }
+
+        if (isEditMode) {
+            if (editingEventId == null || editingEventId.trim().isEmpty()) {
+                setSavingState(false);
+                Toast.makeText(requireContext(), R.string.delete_event_failed, Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            java.util.Map<String, Object> updates = new java.util.HashMap<>();
+            updates.put("title", title);
+            updates.put("icon", selectedEventIcon);
+            updates.put("targetDate", targetDate);
+
+            eventsRef.document(editingEventId.trim())
+                    .update(updates)
+                    .addOnSuccessListener(unused -> {
+                        if (!isAdded()) {
+                            return;
+                        }
+                        Toast.makeText(requireContext(), R.string.edit_event_success, Toast.LENGTH_SHORT).show();
+                        hideKeyboard();
+                        dismissAllowingStateLoss();
+                    })
+                    .addOnFailureListener(e -> {
+                        if (!isAdded()) {
+                            return;
+                        }
+                        setSavingState(false);
+                        Toast.makeText(requireContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
+                    });
+            return;
+        }
+
+        Event event = new Event(title, selectedEventIcon, targetDate);
+        event.setCreatedAt(null);
 
         eventsRef
                 .add(event)

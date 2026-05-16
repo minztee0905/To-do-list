@@ -1,6 +1,5 @@
 package com.example.ticktok.adapter;
 
-import android.graphics.Paint;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,6 +7,7 @@ import android.widget.CheckBox;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.ticktok.R;
@@ -18,7 +18,21 @@ import java.util.List;
 
 public class EisenhowerTaskAdapter extends RecyclerView.Adapter<EisenhowerTaskAdapter.TaskViewHolder> {
 
+    public interface OnTaskCheckedChangeListener {
+        void onTaskCheckedChanged(@NonNull Task task, boolean isChecked);
+    }
+
     private final List<Task> tasks = new ArrayList<>();
+    @Nullable
+    private final OnTaskCheckedChangeListener checkedChangeListener;
+
+    public EisenhowerTaskAdapter() {
+        this(null);
+    }
+
+    public EisenhowerTaskAdapter(@Nullable OnTaskCheckedChangeListener checkedChangeListener) {
+        this.checkedChangeListener = checkedChangeListener;
+    }
 
     @NonNull
     @Override
@@ -35,11 +49,18 @@ public class EisenhowerTaskAdapter extends RecyclerView.Adapter<EisenhowerTaskAd
         holder.cbTask.setOnCheckedChangeListener(null);
         holder.cbTask.setChecked(task.isCompleted());
 
+        holder.cbTask.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            // Keep UI stable immediately
+            task.setCompleted(isChecked);
+            if (checkedChangeListener != null) {
+                checkedChangeListener.onTaskCheckedChanged(task, isChecked);
+            }
+            notifyItemChanged(holder.getBindingAdapterPosition());
+        });
+
         if (task.isCompleted()) {
-            holder.tvTaskTitle.setPaintFlags(holder.tvTaskTitle.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
             holder.tvTaskTitle.setAlpha(0.6f);
         } else {
-            holder.tvTaskTitle.setPaintFlags(holder.tvTaskTitle.getPaintFlags() & (~Paint.STRIKE_THRU_TEXT_FLAG));
             holder.tvTaskTitle.setAlpha(1f);
         }
     }

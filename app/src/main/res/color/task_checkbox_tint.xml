@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+	<!-- Keep the checkbox box/outline gray in all states.
+		 The orange color will be applied only to the tick via buttonIconTint. -->
+	<item android:color="#A0A0A0" android:state_checked="true" />
+	<item android:color="#A0A0A0" />
+</selector>
+

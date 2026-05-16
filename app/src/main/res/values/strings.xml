@@ -2,6 +2,7 @@
     <string name="app_name">TickTok</string>
 
     <string name="menu_button">Menu</string>
+    <string name="back_button">Trở về</string>
 
     <string name="welcome_header">👋 Welcome</string>
 
@@ -36,6 +37,7 @@
     <string name="menu_add">Thêm</string>
     <string name="game_header">Game</string>
     <string name="menu_categories">Danh mục</string>
+    <string name="menu_category_drag_handle">Kéo để sắp xếp danh mục</string>
     <string name="menu_pomodoro">Pomodoro</string>
     <string name="menu_user_profile">Thông tin người dùng</string>
     <string name="menu_user_default_name">Người dùng TickTok</string>
@@ -48,10 +50,28 @@
     <string name="add_category_hint">Ví dụ: Dòng tiền</string>
     <string name="action_save">Lưu</string>
     <string name="action_cancel">Hủy</string>
+    <string name="action_edit">Sửa</string>
+    <string name="action_delete">Xoá</string>
     <string name="error_empty_category">Tên danh mục không được để trống</string>
     <string name="error_duplicate_category">Danh mục đã tồn tại</string>
     <string name="error_load_categories">Không thể tải danh mục từ Firebase</string>
     <string name="add_category_success">Thêm danh mục thành công</string>
+    <string name="edit_category_title">Sửa danh mục</string>
+    <string name="edit_category_success">Cập nhật danh mục thành công</string>
+    <string name="delete_category_title">Xoá danh mục</string>
+    <string name="delete_category_message">Bạn có chắc muốn xoá “%1$s” không? (Các task thuộc danh mục này cũng sẽ bị xoá)</string>
+    <string name="delete_category_success">Đã xoá danh mục</string>
+    <string name="delete_category_failed">Xoá danh mục thất bại</string>
+    <string name="error_save_category_order">Không thể lưu thứ tự danh mục</string>
+
+    <string name="edit_task_success">Cập nhật công việc thành công</string>
+    <string name="add_task_success">Đã thêm công việc</string>
+    <string name="delete_task_title">Xoá công việc</string>
+    <string name="delete_task_message">Bạn có chắc muốn xoá công việc “%1$s” không?</string>
+    <string name="delete_task_success">Đã xoá công việc</string>
+    <string name="delete_task_failed">Xoá công việc thất bại</string>
+    <string name="task_more_actions">Tuỳ chọn công việc</string>
+    <string name="error_save_task_order">Không thể lưu thứ tự công việc</string>
     <string name="menu_add_coming_soon">Tính năng thêm danh mục sẽ làm ở bước tiếp theo</string>
 
     <string name="add_task_hint">Bạn thích làm gì?</string>
@@ -143,6 +163,7 @@
     <string name="event_empty_subtitle">Sinh nhật, đám tiệc, deadline sẽ hiển thị ở đây</string>
     <string name="add_event_hint">Sự kiện gì sắp tới?</string>
     <string name="add_event_title">Thêm sự kiện</string>
+    <string name="edit_event_title">Sửa sự kiện</string>
     <string name="add_event_name_hint">Tên sự kiện</string>
     <string name="add_event_title_hint">Tên sự kiện</string>
     <string name="add_event_icon_hint">🎯</string>
@@ -152,4 +173,10 @@
     <string name="add_event_pick_icon">Chọn icon sự kiện</string>
     <string name="add_event_send">Gửi sự kiện</string>
     <string name="add_event_success">Đã thêm sự kiện</string>
+    <string name="edit_event_success">Đã cập nhật sự kiện</string>
+
+    <string name="delete_event_title">Xoá sự kiện</string>
+    <string name="delete_event_message">Bạn có chắc muốn xoá sự kiện “%1$s” không?</string>
+    <string name="delete_event_success">Đã xoá sự kiện</string>
+    <string name="delete_event_failed">Xoá sự kiện thất bại</string>
 </resources>

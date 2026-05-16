@@ -35,11 +35,21 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 public class AddCategoryFragment extends BottomSheetDialogFragment {
 
     private static final String DEFAULT_ICON = "≡";
+
+    private static final String ARG_MODE = "arg_mode";
+    private static final String ARG_CATEGORY_ID = "arg_category_id";
+    private static final String ARG_CATEGORY_NAME = "arg_category_name";
+    private static final String ARG_CATEGORY_ICON = "arg_category_icon";
+    private static final int MODE_ADD = 0;
+    private static final int MODE_EDIT = 1;
+
     public static final String RESULT_KEY_ADD_CATEGORY = "result_add_category";
+    public static final String RESULT_KEY_CATEGORY_ID = "result_category_id";
     public static final String RESULT_KEY_CATEGORY_NAME = "result_category_name";
     public static final String RESULT_KEY_CATEGORY_ICON = "result_category_icon";
 
     private ImageView iv_close;
+    private TextView tv_title;
     private TextView tv_save;
     private EditText et_category_icon;
     private EditText et_category_name;
@@ -49,6 +59,10 @@ public class AddCategoryFragment extends BottomSheetDialogFragment {
     private String selectedIconValue = DEFAULT_ICON;
     private CategoryRepositoryContract categoryRepository;
     private boolean isSaving;
+
+    private boolean isEditMode;
+    @Nullable
+    private String editingCategoryId;
     private final IconOption[] iconOptions = new IconOption[] {
             new IconOption("≡", "Mặc định"),
             new IconOption("📁", "Chung"),
@@ -63,6 +77,20 @@ public class AddCategoryFragment extends BottomSheetDialogFragment {
             new IconOption("❤️", "Quan trọng"),
             new IconOption("🎉", "Sự kiện")
     };
+
+    @NonNull
+    public static AddCategoryFragment newInstanceForEdit(@NonNull String categoryId,
+                                                         @NonNull String name,
+                                                         @NonNull String icon) {
+        AddCategoryFragment fragment = new AddCategoryFragment();
+        Bundle args = new Bundle();
+        args.putInt(ARG_MODE, MODE_EDIT);
+        args.putString(ARG_CATEGORY_ID, categoryId);
+        args.putString(ARG_CATEGORY_NAME, name);
+        args.putString(ARG_CATEGORY_ICON, icon);
+        fragment.setArguments(args);
+        return fragment;
+    }
 
     @NonNull
     @Override
@@ -106,6 +134,7 @@ public class AddCategoryFragment extends BottomSheetDialogFragment {
 
         initViews(view);
         categoryRepository = new CategoryRepository();
+        readArgumentsAndApplyUi();
         setupListeners();
 
         if (et_category_name != null) {
@@ -116,11 +145,41 @@ public class AddCategoryFragment extends BottomSheetDialogFragment {
 
     private void initViews(@NonNull View view) {
         iv_close = view.findViewById(R.id.iv_close);
+        tv_title = view.findViewById(R.id.tv_title);
         tv_save = view.findViewById(R.id.tv_save);
         et_category_icon = view.findViewById(R.id.et_category_icon);
         et_category_name = view.findViewById(R.id.et_category_name);
         iconPickerContainer = view.findViewById(R.id.iconPickerContainer);
         gvCategoryIcons = view.findViewById(R.id.gvCategoryIcons);
+    }
+
+    private void readArgumentsAndApplyUi() {
+        Bundle args = getArguments();
+        int mode = args != null ? args.getInt(ARG_MODE, MODE_ADD) : MODE_ADD;
+        isEditMode = mode == MODE_EDIT;
+
+        if (isEditMode) {
+            editingCategoryId = args != null ? args.getString(ARG_CATEGORY_ID) : null;
+            String initialName = args != null ? args.getString(ARG_CATEGORY_NAME) : "";
+            String initialIcon = args != null ? args.getString(ARG_CATEGORY_ICON) : "";
+
+            if (tv_title != null) {
+                tv_title.setText(R.string.edit_category_title);
+            }
+
+            if (et_category_name != null && initialName != null) {
+                et_category_name.setText(initialName);
+                et_category_name.setSelection(initialName.length());
+            }
+
+            String normalizedIcon = (initialIcon == null || initialIcon.trim().isEmpty())
+                    ? DEFAULT_ICON
+                    : initialIcon.trim();
+            selectedIconValue = normalizedIcon;
+            if (et_category_icon != null) {
+                et_category_icon.setText(normalizedIcon);
+            }
+        }
     }
 
     private void setupListeners() {
@@ -194,7 +253,11 @@ public class AddCategoryFragment extends BottomSheetDialogFragment {
         }
 
         setSavingState(true);
-        saveCategoryToDatabase(name, icon);
+        if (isEditMode) {
+            updateCategoryInDatabase(name, icon);
+        } else {
+            saveCategoryToDatabase(name, icon);
+        }
     }
 
     private void saveCategoryToDatabase(@NonNull String name, @NonNull String icon) {
@@ -212,11 +275,54 @@ public class AddCategoryFragment extends BottomSheetDialogFragment {
                 }
 
                 Bundle result = new Bundle();
+                // Add mode doesn't have id yet (Firestore auto id).
                 result.putString(RESULT_KEY_CATEGORY_NAME, name);
                 result.putString(RESULT_KEY_CATEGORY_ICON, icon);
                 getParentFragmentManager().setFragmentResult(RESULT_KEY_ADD_CATEGORY, result);
 
                 Toast.makeText(requireContext(), R.string.add_category_success, Toast.LENGTH_SHORT).show();
+                hideKeyboard();
+                closeScreen();
+            }
+
+            @Override
+            public void onError(Exception e) {
+                if (!isAdded()) {
+                    return;
+                }
+                setSavingState(false);
+                Toast.makeText(requireContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void updateCategoryInDatabase(@NonNull String name, @NonNull String icon) {
+        if (categoryRepository == null) {
+            setSavingState(false);
+            Toast.makeText(requireContext(), R.string.error_load_categories, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (editingCategoryId == null || editingCategoryId.trim().isEmpty()) {
+            setSavingState(false);
+            Toast.makeText(requireContext(), R.string.delete_category_failed, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        categoryRepository.updateCategory(editingCategoryId, name, icon, new CategoryRepositoryContract.OnCategorySavedListener() {
+            @Override
+            public void onSuccess() {
+                if (!isAdded()) {
+                    return;
+                }
+
+                Bundle result = new Bundle();
+                result.putString(RESULT_KEY_CATEGORY_ID, editingCategoryId);
+                result.putString(RESULT_KEY_CATEGORY_NAME, name);
+                result.putString(RESULT_KEY_CATEGORY_ICON, icon);
+                getParentFragmentManager().setFragmentResult(RESULT_KEY_ADD_CATEGORY, result);
+
+                Toast.makeText(requireContext(), R.string.edit_category_success, Toast.LENGTH_SHORT).show();
                 hideKeyboard();
                 closeScreen();
             }

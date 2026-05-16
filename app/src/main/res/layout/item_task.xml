@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
 	android:id="@+id/layoutTaskItem"
 	android:layout_width="match_parent"
 	android:layout_height="44dp"
@@ -12,11 +13,14 @@
 	android:paddingStart="8dp"
 	android:paddingEnd="8dp">
 
-	<CheckBox
+	<com.google.android.material.checkbox.MaterialCheckBox
 		android:id="@+id/cbTask"
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
-		android:buttonTint="#A0A0A0"
+		android:buttonTint="@color/task_checkbox_tint"
+		app:buttonTint="@color/task_checkbox_tint"
+		app:buttonIconTint="@color/task_checkbox_icon_tint"
+		app:useMaterialThemeColors="false"
 		android:minWidth="0dp"
 		android:minHeight="0dp"
 		android:padding="0dp"
@@ -34,5 +38,15 @@
 		android:text=""
 		android:textColor="@color/text_white"
 		android:textSize="14sp" />
+
+	<ImageView
+		android:id="@+id/ivTaskMore"
+		android:layout_width="24dp"
+		android:layout_height="24dp"
+		android:contentDescription="@string/task_more_actions"
+		android:src="@drawable/home_ic_menu_more"
+		android:tint="#B0B0B0"
+		android:longClickable="false"
+		android:padding="2dp" />
 
 </LinearLayout>

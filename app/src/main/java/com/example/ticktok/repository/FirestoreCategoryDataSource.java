@@ -70,8 +70,93 @@ public class FirestoreCategoryDataSource implements CategoryDataSource {
                 .addOnFailureListener(callback::onError);
     }
 
+    @Override
+    public void updateCategory(@NonNull String categoryId,
+                               @NonNull String name,
+                               @NonNull String icon,
+                               @NonNull UpdateCategoryCallback callback) {
+        CollectionReference categoriesRef = resolveCategoriesRef(callback);
+        if (categoriesRef == null) {
+            return;
+        }
+
+        DocumentReference docRef = categoriesRef.document(categoryId);
+        Map<String, Object> updates = new HashMap<>();
+        updates.put(FIELD_TITLE, name);
+        updates.put(FIELD_ICON, icon);
+        docRef.update(updates)
+                .addOnSuccessListener(unused -> callback.onSuccess())
+                .addOnFailureListener(callback::onError);
+    }
+
+    @Override
+    public void deleteCategory(@NonNull String categoryId,
+                               @NonNull DeleteCategoryCallback callback) {
+        CollectionReference categoriesRef = resolveCategoriesRef(callback);
+        if (categoriesRef == null) {
+            return;
+        }
+
+        categoriesRef.document(categoryId)
+                .delete()
+                .addOnSuccessListener(unused -> callback.onSuccess())
+                .addOnFailureListener(callback::onError);
+    }
+
+    @Override
+    public void updateCategoryOrders(@NonNull List<CategoryOrderUpdate> updates,
+                                     @NonNull UpdateCategoryOrdersCallback callback) {
+        CollectionReference categoriesRef = resolveCategoriesRef(callback);
+        if (categoriesRef == null) {
+            return;
+        }
+        if (updates.isEmpty()) {
+            callback.onSuccess();
+            return;
+        }
+
+        WriteBatch batch = db.batch();
+        for (CategoryOrderUpdate update : updates) {
+            if (update == null || update.getId() == null || update.getId().trim().isEmpty()) {
+                continue;
+            }
+            batch.update(categoriesRef.document(update.getId().trim()), FIELD_ORDER, update.getOrder());
+        }
+
+        batch.commit()
+                .addOnSuccessListener(unused -> callback.onSuccess())
+                .addOnFailureListener(callback::onError);
+    }
+
     @Nullable
     private CollectionReference resolveCategoriesRef(@NonNull InsertCategoryCallback callback) {
+        CollectionReference categoriesRef = UserFirestorePaths.getUserCollection(db, COLLECTION_CATEGORIES);
+        if (categoriesRef == null) {
+            callback.onError(new IllegalStateException("User is not authenticated"));
+        }
+        return categoriesRef;
+    }
+
+    @Nullable
+    private CollectionReference resolveCategoriesRef(@NonNull UpdateCategoryCallback callback) {
+        CollectionReference categoriesRef = UserFirestorePaths.getUserCollection(db, COLLECTION_CATEGORIES);
+        if (categoriesRef == null) {
+            callback.onError(new IllegalStateException("User is not authenticated"));
+        }
+        return categoriesRef;
+    }
+
+    @Nullable
+    private CollectionReference resolveCategoriesRef(@NonNull DeleteCategoryCallback callback) {
+        CollectionReference categoriesRef = UserFirestorePaths.getUserCollection(db, COLLECTION_CATEGORIES);
+        if (categoriesRef == null) {
+            callback.onError(new IllegalStateException("User is not authenticated"));
+        }
+        return categoriesRef;
+    }
+
+    @Nullable
+    private CollectionReference resolveCategoriesRef(@NonNull UpdateCategoryOrdersCallback callback) {
         CollectionReference categoriesRef = UserFirestorePaths.getUserCollection(db, COLLECTION_CATEGORIES);
         if (categoriesRef == null) {
             callback.onError(new IllegalStateException("User is not authenticated"));

@@ -20,8 +20,8 @@ import com.example.ticktok.adapter.EisenhowerTaskAdapter;
 import com.example.ticktok.adapter.TaskAdapter;
 import com.example.ticktok.model.Task;
 import com.example.ticktok.util.UserFirestorePaths;
-import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
@@ -148,8 +148,30 @@ public class CalendarFragment extends Fragment {
         if (rvTasks.getItemDecorationCount() == 0) {
             rvTasks.addItemDecoration(new VerticalSpaceItemDecoration(dpToPx(2)));
         }
-        taskAdapter = new TaskAdapter();
+        taskAdapter = new TaskAdapter(null, null, this::onTaskCheckedChanged);
         rvTasks.setAdapter(taskAdapter);
+    }
+
+    private void onTaskCheckedChanged(@NonNull Task task, boolean isChecked) {
+        if (!isAdded()) {
+            return;
+        }
+        if (task.getId() == null || task.getId().trim().isEmpty()) {
+            return;
+        }
+
+        CollectionReference tasksRef = UserFirestorePaths.getUserCollection("tasks");
+        if (tasksRef == null) {
+            return;
+        }
+
+        tasksRef.document(task.getId().trim())
+                .update(
+                        // Write both keys to be compatible with Firestore POJO mapping.
+                        "isCompleted", isChecked,
+                        "completed", isChecked,
+                        "completedAt", isChecked ? FieldValue.serverTimestamp() : null
+                );
     }
 
     private void setupCalendar(@NonNull View rootView) {
@@ -188,10 +210,10 @@ public class CalendarFragment extends Fragment {
         tvEmptyQuadrant3 = rootView.findViewById(R.id.tvEmptyQuadrant3);
         tvEmptyQuadrant4 = rootView.findViewById(R.id.tvEmptyQuadrant4);
 
-        quadrantAdapter1 = new EisenhowerTaskAdapter();
-        quadrantAdapter2 = new EisenhowerTaskAdapter();
-        quadrantAdapter3 = new EisenhowerTaskAdapter();
-        quadrantAdapter4 = new EisenhowerTaskAdapter();
+        quadrantAdapter1 = new EisenhowerTaskAdapter(this::onTaskCheckedChanged);
+        quadrantAdapter2 = new EisenhowerTaskAdapter(this::onTaskCheckedChanged);
+        quadrantAdapter3 = new EisenhowerTaskAdapter(this::onTaskCheckedChanged);
+        quadrantAdapter4 = new EisenhowerTaskAdapter(this::onTaskCheckedChanged);
 
         bindQuadrantRecycler(rvQuadrant1, quadrantAdapter1);
         bindQuadrantRecycler(rvQuadrant2, quadrantAdapter2);

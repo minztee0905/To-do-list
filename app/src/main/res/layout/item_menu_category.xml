@@ -24,5 +24,14 @@
         android:textColor="@color/text_white"
         android:textSize="16sp" />
 
+      <ImageView
+        android:id="@+id/ivDragHandle"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:contentDescription="@string/menu_category_drag_handle"
+            android:tint="#B0B0B0"
+        android:src="@drawable/home_ic_menu_more"
+        android:padding="2dp" />
+
 </LinearLayout>
 

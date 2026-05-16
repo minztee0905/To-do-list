@@ -6,6 +6,24 @@ import java.util.List;
 
 public interface CategoryDataSource {
 
+    final class CategoryOrderUpdate {
+        private final String id;
+        private final int order;
+
+        public CategoryOrderUpdate(@NonNull String id, int order) {
+            this.id = id;
+            this.order = order;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public int getOrder() {
+            return order;
+        }
+    }
+
     final class RawCategoryDocument {
         private final String id;
         private final String title;
@@ -46,11 +64,40 @@ public interface CategoryDataSource {
         void onError(Exception exception);
     }
 
+    interface UpdateCategoryCallback {
+        void onSuccess();
+
+        void onError(Exception exception);
+    }
+
+    interface DeleteCategoryCallback {
+        void onSuccess();
+
+        void onError(Exception exception);
+    }
+
+    interface UpdateCategoryOrdersCallback {
+        void onSuccess();
+
+        void onError(Exception exception);
+    }
+
     void getCategories(@NonNull LoadRawCategoriesCallback callback);
 
     void insertCategoryAtTop(@NonNull String name,
                              @NonNull String icon,
                              @NonNull InsertCategoryCallback callback);
+
+    void updateCategory(@NonNull String categoryId,
+                        @NonNull String name,
+                        @NonNull String icon,
+                        @NonNull UpdateCategoryCallback callback);
+
+    void deleteCategory(@NonNull String categoryId,
+                        @NonNull DeleteCategoryCallback callback);
+
+    void updateCategoryOrders(@NonNull List<CategoryOrderUpdate> updates,
+                              @NonNull UpdateCategoryOrdersCallback callback);
 }
 
 

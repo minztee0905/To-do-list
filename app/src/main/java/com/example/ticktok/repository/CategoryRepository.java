@@ -78,6 +78,92 @@ public class CategoryRepository implements CategoryRepositoryContract {
         });
     }
 
+    @Override
+    public void updateCategory(@NonNull String categoryId,
+                               @NonNull String name,
+                               @NonNull String icon,
+                               @NonNull OnCategorySavedListener listener) {
+        String normalizedId = safeString(categoryId, "");
+        if (normalizedId.isEmpty()) {
+            listener.onError(new IllegalArgumentException("Category id không hợp lệ"));
+            return;
+        }
+
+        String normalizedName = safeString(name, "");
+        if (normalizedName.isEmpty()) {
+            listener.onError(new IllegalArgumentException("Tên danh mục không hợp lệ"));
+            return;
+        }
+
+        String normalizedIcon = safeString(icon, DEFAULT_ICON);
+        dataSource.updateCategory(normalizedId, normalizedName, normalizedIcon, new CategoryDataSource.UpdateCategoryCallback() {
+            @Override
+            public void onSuccess() {
+                listener.onSuccess();
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                listener.onError(exception);
+            }
+        });
+    }
+
+    @Override
+    public void deleteCategory(@NonNull String categoryId,
+                               @NonNull OnCategoryDeletedListener listener) {
+        String normalizedId = safeString(categoryId, "");
+        if (normalizedId.isEmpty()) {
+            listener.onError(new IllegalArgumentException("Category id không hợp lệ"));
+            return;
+        }
+
+        dataSource.deleteCategory(normalizedId, new CategoryDataSource.DeleteCategoryCallback() {
+            @Override
+            public void onSuccess() {
+                listener.onSuccess();
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                listener.onError(exception);
+            }
+        });
+    }
+
+    @Override
+    public void updateCategoryOrders(@NonNull List<Category> categories,
+                                     @NonNull OnCategorySavedListener listener) {
+        if (categories.isEmpty()) {
+            listener.onSuccess();
+            return;
+        }
+
+        List<CategoryDataSource.CategoryOrderUpdate> updates = new ArrayList<>();
+        for (Category category : categories) {
+            if (category == null) {
+                continue;
+            }
+            String id = safeString(category.getId(), "");
+            if (id.isEmpty()) {
+                continue;
+            }
+            updates.add(new CategoryDataSource.CategoryOrderUpdate(id, category.getOrder()));
+        }
+
+        dataSource.updateCategoryOrders(updates, new CategoryDataSource.UpdateCategoryOrdersCallback() {
+            @Override
+            public void onSuccess() {
+                listener.onSuccess();
+            }
+
+            @Override
+            public void onError(Exception exception) {
+                listener.onError(exception);
+            }
+        });
+    }
+
     private int parseOrder(Object orderObj) {
         if (orderObj instanceof Number) {
             return ((Number) orderObj).intValue();
