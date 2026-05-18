@@ -9,7 +9,7 @@
     <string name="card_title_1">Việc hôm nay</string>
     <string name="card_title_2">Việc ngày mai</string>
     <string name="card_title_3">Việc quá hạn</string>
-    <string name="card_title_4">Việc đã hoàn thành hôm nay</string>
+    <string name="card_title_4">Hoàn thành hôm nay</string>
     <string name="chevron_icon">Chevron Right Arrow</string>
 
     <string name="dock_icon_1">Home</string>
@@ -179,4 +179,11 @@
     <string name="delete_event_message">Bạn có chắc muốn xoá sự kiện “%1$s” không?</string>
     <string name="delete_event_success">Đã xoá sự kiện</string>
     <string name="delete_event_failed">Xoá sự kiện thất bại</string>
+
+    <!-- Local notifications -->
+    <string name="notification_task_reminder_body">Đến giờ làm task này rồi</string>
+    <string name="notification_task_reminder_channel_description">Nhắc nhở theo thời gian bạn đặt cho từng task</string>
+
+    <string name="reminder_cleared">Đã xoá nhắc nhở</string>
+    <string name="reminder_time_in_past_cleared">Thời gian nhắc nhở đã qua, mình đã bỏ nhắc nhở</string>
 </resources>

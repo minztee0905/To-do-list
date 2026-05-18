@@ -20,6 +20,7 @@ import com.example.ticktok.R;
 import com.example.ticktok.activity.MainActivity;
 import com.example.ticktok.adapter.TaskAdapter;
 import com.example.ticktok.model.Task;
+import com.example.ticktok.reminder.ReminderManager;
 import com.example.ticktok.util.UserFirestorePaths;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.FieldValue;
@@ -323,6 +324,7 @@ public class TaskFilterFragment extends Fragment {
         tasksRef.document(task.getId().trim())
                 .delete()
                 .addOnSuccessListener(unused -> {
+                    ReminderManager.cancelReminder(requireContext(), task.getId().trim());
                     if (isAdded()) {
                         Toast.makeText(requireContext(), R.string.delete_task_success, Toast.LENGTH_SHORT).show();
                     }
@@ -337,6 +339,10 @@ public class TaskFilterFragment extends Fragment {
     private void onTaskCheckedChanged(@NonNull Task task, boolean isChecked) {
         if (task.getId() == null || task.getId().trim().isEmpty()) {
             return;
+        }
+
+        if (isChecked) {
+            ReminderManager.cancelReminder(requireContext(), task.getId().trim());
         }
 
         CollectionReference tasksRef = UserFirestorePaths.getUserCollection("tasks");

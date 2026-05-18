@@ -25,6 +25,7 @@ import androidx.core.content.ContextCompat;
 
 import com.example.ticktok.R;
 import com.example.ticktok.model.Task;
+import com.example.ticktok.reminder.ReminderManager;
 import com.example.ticktok.util.UserFirestorePaths;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.CollectionReference;
@@ -41,6 +42,7 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
     private static final String ARG_TASK_DESCRIPTION = "arg_task_description";
     private static final String ARG_TASK_PRIORITY = "arg_task_priority";
     private static final String ARG_TASK_DUE_DATE = "arg_task_due_date";
+    private static final String ARG_TASK_REMINDER_TIME = "arg_task_reminder_time";
 
     private static final int MODE_ADD = 0;
     private static final int MODE_EDIT = 1;
@@ -50,6 +52,7 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
     private static final int PRIORITY_HIGH = 3;
 
     private long selectedDueDate = 0;
+    private long selectedReminderTime = 0;
     private int selectedPriority = PRIORITY_NONE;
     private EditText taskInput;
     private ImageButton btnFlag;
@@ -62,6 +65,8 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
     private String prefillTitle;
     @Nullable
     private String prefillDescription;
+
+    private long originalReminderTime = 0L;
 
     public AddTaskBottomSheetFragment() {
     }
@@ -94,6 +99,9 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
         if (task.getDueDate() != null && task.getDueDate() > 0) {
             args.putLong(ARG_TASK_DUE_DATE, task.getDueDate());
         }
+        if (task.getReminderTime() != null && task.getReminderTime() > 0) {
+            args.putLong(ARG_TASK_REMINDER_TIME, task.getReminderTime());
+        }
         fragment.setArguments(args);
         return fragment;
     }
@@ -112,6 +120,11 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
                 selectedPriority = args.getInt(ARG_TASK_PRIORITY, PRIORITY_NONE);
                 if (args.containsKey(ARG_TASK_DUE_DATE)) {
                     selectedDueDate = normalizeToStartOfDay(args.getLong(ARG_TASK_DUE_DATE, 0L));
+                }
+
+                if (args.containsKey(ARG_TASK_REMINDER_TIME)) {
+                    selectedReminderTime = args.getLong(ARG_TASK_REMINDER_TIME, 0L);
+                    originalReminderTime = selectedReminderTime;
                 }
             }
 
@@ -184,6 +197,21 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
             applySelectedPriorityColor();
         }
 
+        ImageButton btnMore = view.findViewById(R.id.btnMore);
+        if (btnMore != null) {
+            // Reminder: pick TIME only to avoid re-selecting the date (the date comes from dueDate).
+            btnMore.setOnClickListener(v -> showReminderTimePicker());
+            btnMore.setOnLongClickListener(v -> {
+                selectedReminderTime = 0L;
+                btnMore.setColorFilter(ContextCompat.getColor(requireContext(), R.color.text_white));
+                Toast.makeText(requireContext(), R.string.reminder_cleared, Toast.LENGTH_SHORT).show();
+                return true;
+            });
+            if (selectedReminderTime > 0) {
+                btnMore.setColorFilter(android.graphics.Color.parseColor("#FF9800"));
+            }
+        }
+
         if (isEditMode) {
             String title = prefillTitle == null ? "" : prefillTitle.trim();
             String desc = prefillDescription == null ? "" : prefillDescription.trim();
@@ -247,6 +275,22 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
                     java.util.Calendar selectedCalendar = java.util.Calendar.getInstance();
                     selectedCalendar.set(year1, monthOfYear, dayOfMonth);
                     selectedDueDate = normalizeToStartOfDay(selectedCalendar.getTimeInMillis());
+
+                    // If a reminder time is already set, keep the same hour/minute but move it to the new date.
+                    if (selectedReminderTime > 0) {
+                        java.util.Calendar reminderCal = java.util.Calendar.getInstance();
+                        reminderCal.setTimeInMillis(selectedReminderTime);
+                        int hour = reminderCal.get(java.util.Calendar.HOUR_OF_DAY);
+                        int minute = reminderCal.get(java.util.Calendar.MINUTE);
+
+                        java.util.Calendar newReminder = java.util.Calendar.getInstance();
+                        newReminder.setTimeInMillis(selectedDueDate);
+                        newReminder.set(java.util.Calendar.HOUR_OF_DAY, hour);
+                        newReminder.set(java.util.Calendar.MINUTE, minute);
+                        newReminder.set(java.util.Calendar.SECOND, 0);
+                        newReminder.set(java.util.Calendar.MILLISECOND, 0);
+                        selectedReminderTime = newReminder.getTimeInMillis();
+                    }
 
                     View root = getView();
                     if (root != null) {
@@ -381,6 +425,23 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
                 ? normalizeToStartOfDay(selectedDueDate)
                 : getStartOfTodayMillis();
 
+        long reminderTimeValue = selectedReminderTime > 0 ? selectedReminderTime : 0L;
+        if (reminderTimeValue > 0 && reminderTimeValue <= System.currentTimeMillis()) {
+            // Don't persist a reminder that can't actually fire.
+            reminderTimeValue = 0L;
+            selectedReminderTime = 0L;
+            View root = getView();
+            if (root != null) {
+                ImageButton btnMore = root.findViewById(R.id.btnMore);
+                if (btnMore != null) {
+                    btnMore.setColorFilter(ContextCompat.getColor(requireContext(), R.color.text_white));
+                }
+            }
+            Toast.makeText(requireContext(), R.string.reminder_time_in_past_cleared, Toast.LENGTH_SHORT).show();
+        }
+
+        final long finalReminderTimeValue = reminderTimeValue;
+
         CollectionReference tasksRef = UserFirestorePaths.getUserCollection("tasks");
         if (tasksRef == null) {
             Toast.makeText(requireContext(), R.string.auth_error_login_required, Toast.LENGTH_SHORT).show();
@@ -399,10 +460,20 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
             updates.put("priority", selectedPriority);
             updates.put("dueDate", dueDateValue);
             updates.put("categoryId", categoryId);
+            updates.put("reminderTime", finalReminderTimeValue);
 
             tasksRef.document(editingTaskId.trim())
                     .update(updates)
                     .addOnSuccessListener(unused -> {
+                        Task temp = new Task();
+                        temp.setId(editingTaskId.trim());
+                        temp.setTitle(title);
+                        temp.setReminderTime(finalReminderTimeValue);
+                        if (finalReminderTimeValue > System.currentTimeMillis()) {
+                            ReminderManager.ensureNotificationPermission(requireActivity());
+                        }
+                        ReminderManager.setReminder(requireContext(), temp);
+
                         Toast.makeText(requireContext(), R.string.edit_task_success, Toast.LENGTH_SHORT).show();
                         dismiss();
                     })
@@ -410,17 +481,18 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
             return;
         }
 
-        addNewTaskWithNextOrder(tasksRef, title, description, dueDateValue);
+        addNewTaskWithNextOrder(tasksRef, title, description, dueDateValue, finalReminderTimeValue);
     }
 
     private void addNewTaskWithNextOrder(@NonNull CollectionReference tasksRef,
                                         @NonNull String title,
                                         @NonNull String description,
-                                        @NonNull Long dueDateValue) {
+                                        @NonNull Long dueDateValue,
+                                        long reminderTimeValue) {
         // Use a time-based order to avoid Firestore composite-index requirements.
         // (Drag & drop will later rewrite orders to 1..N anyway.)
         int nextOrder = (int) (System.currentTimeMillis() / 1000L);
-        Task task = new Task(title, description, categoryId, selectedPriority, dueDateValue, nextOrder);
+        Task task = new Task(title, description, categoryId, selectedPriority, dueDateValue, reminderTimeValue, nextOrder);
         task.setCompleted(false);
         task.setOrder(nextOrder);
         task.setCreatedAt(null);
@@ -429,10 +501,70 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
                 .add(task)
                 .addOnSuccessListener(documentReference -> {
                     documentReference.update("createdAt", FieldValue.serverTimestamp());
+
+                    // Schedule reminder after we have a stable Firestore doc id.
+                    task.setId(documentReference.getId());
+                    if (reminderTimeValue > System.currentTimeMillis()) {
+                        ReminderManager.ensureNotificationPermission(requireActivity());
+                    }
+                    ReminderManager.setReminder(requireContext(), task);
+
                     Toast.makeText(requireContext(), R.string.add_task_success, Toast.LENGTH_SHORT).show();
                     dismiss();
                 })
                 .addOnFailureListener(e -> Toast.makeText(requireContext(), e.getMessage(), Toast.LENGTH_SHORT).show());
+    }
+
+    private void showReminderTimePicker() {
+        restoreTaskInputFocus();
+
+        // Use dueDate as the reminder date to avoid selecting the date twice.
+        long baseDate = selectedDueDate > 0
+                ? selectedDueDate
+                : getStartOfTodayMillis();
+
+        final java.util.Calendar base = java.util.Calendar.getInstance();
+        base.setTimeInMillis(baseDate);
+
+        int initialHour;
+        int initialMinute;
+        if (selectedReminderTime > 0) {
+            java.util.Calendar existing = java.util.Calendar.getInstance();
+            existing.setTimeInMillis(selectedReminderTime);
+            initialHour = existing.get(java.util.Calendar.HOUR_OF_DAY);
+            initialMinute = existing.get(java.util.Calendar.MINUTE);
+        } else {
+            // Default to the next hour to reduce chances of picking a past time.
+            java.util.Calendar now = java.util.Calendar.getInstance();
+            initialHour = now.get(java.util.Calendar.HOUR_OF_DAY);
+            initialMinute = now.get(java.util.Calendar.MINUTE);
+        }
+
+        android.app.TimePickerDialog timePickerDialog = new android.app.TimePickerDialog(
+                requireContext(),
+                (timeView, hourOfDay, minute) -> {
+                    java.util.Calendar picked = java.util.Calendar.getInstance();
+                    picked.setTimeInMillis(baseDate);
+                    picked.set(java.util.Calendar.HOUR_OF_DAY, hourOfDay);
+                    picked.set(java.util.Calendar.MINUTE, minute);
+                    picked.set(java.util.Calendar.SECOND, 0);
+                    picked.set(java.util.Calendar.MILLISECOND, 0);
+
+                    selectedReminderTime = picked.getTimeInMillis();
+
+                    View root = getView();
+                    if (root != null) {
+                        ImageButton btnMore = root.findViewById(R.id.btnMore);
+                        if (btnMore != null) {
+                            btnMore.setColorFilter(android.graphics.Color.parseColor("#FF9800"));
+                        }
+                    }
+                },
+                initialHour,
+                initialMinute,
+                true
+        );
+        timePickerDialog.show();
     }
 
     private void updateSendMicVisibility(@Nullable ImageButton btnMicrophone,

@@ -19,6 +19,7 @@ import com.example.ticktok.adapter.CalendarAdapter;
 import com.example.ticktok.adapter.EisenhowerTaskAdapter;
 import com.example.ticktok.adapter.TaskAdapter;
 import com.example.ticktok.model.Task;
+import com.example.ticktok.reminder.ReminderManager;
 import com.example.ticktok.util.UserFirestorePaths;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.FieldValue;
@@ -158,6 +159,10 @@ public class CalendarFragment extends Fragment {
         }
         if (task.getId() == null || task.getId().trim().isEmpty()) {
             return;
+        }
+
+        if (isChecked) {
+            ReminderManager.cancelReminder(requireContext(), task.getId().trim());
         }
 
         CollectionReference tasksRef = UserFirestorePaths.getUserCollection("tasks");

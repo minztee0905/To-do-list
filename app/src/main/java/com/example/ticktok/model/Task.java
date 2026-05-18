@@ -16,6 +16,7 @@ public class Task {
     private String categoryId;
     private int priority;
     private Long dueDate;
+    private Long reminderTime;
 
     @ServerTimestamp
     private Date createdAt;
@@ -36,9 +37,21 @@ public class Task {
         this.categoryId = categoryId;
         this.priority = priority;
         this.dueDate = dueDate;
+        this.reminderTime = 0L;
         this.order = order;
         this.isCompleted = false;
         this.completedAt = null;
+    }
+
+    public Task(String title,
+                String description,
+                String categoryId,
+                int priority,
+                Long dueDate,
+                Long reminderTime,
+                int order) {
+        this(title, description, categoryId, priority, dueDate, order);
+        this.reminderTime = reminderTime;
     }
 
     public String getId() {
@@ -103,6 +116,14 @@ public class Task {
 
     public void setDueDate(Long dueDate) {
         this.dueDate = dueDate;
+    }
+
+    public Long getReminderTime() {
+        return reminderTime;
+    }
+
+    public void setReminderTime(Long reminderTime) {
+        this.reminderTime = reminderTime;
     }
 
     public Date getCreatedAt() {

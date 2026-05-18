@@ -20,6 +20,7 @@ import androidx.recyclerview.widget.ItemTouchHelper;
 import com.example.ticktok.R;
 import com.example.ticktok.adapter.TaskAdapter;
 import com.example.ticktok.model.Task;
+import com.example.ticktok.reminder.ReminderManager;
 import com.example.ticktok.util.UserFirestorePaths;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.CollectionReference;
@@ -147,6 +148,10 @@ public class CategoryFragment extends Fragment {
             return;
         }
 
+        if (isChecked) {
+            ReminderManager.cancelReminder(requireContext(), task.getId().trim());
+        }
+
         CollectionReference tasksRef = UserFirestorePaths.getUserCollection("tasks");
         if (tasksRef == null) {
             Toast.makeText(requireContext(), R.string.auth_error_login_required, Toast.LENGTH_SHORT).show();
@@ -269,6 +274,7 @@ public class CategoryFragment extends Fragment {
         tasksRef.document(task.getId().trim())
                 .delete()
                 .addOnSuccessListener(unused -> {
+                    ReminderManager.cancelReminder(requireContext(), task.getId().trim());
                     if (isAdded()) {
                         Toast.makeText(requireContext(), R.string.delete_task_success, Toast.LENGTH_SHORT).show();
                     }

@@ -54,10 +54,16 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.WriteBatch;
 
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -65,6 +71,9 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG_ADD_TASK_SHEET = "add_task_sheet";
     private static final String TAG_ADD_EVENT_SHEET = "add_event_sheet";
     private static final String TAG_ADD_CATEGORY_SHEET = "add_category_sheet";
+
+    private static final String PREFS_TASK_CLEANUP = "prefs_task_cleanup";
+    private static final String PREF_KEY_LAST_CLEANUP_DAY_PREFIX = "last_cleanup_day_";
 
     private DrawerLayout drawerLayout;
     @Nullable
@@ -143,8 +152,154 @@ public class MainActivity extends AppCompatActivity {
             finish();
             return;
         }
+
+        // Delete tasks that were completed on previous days (run at most once per day).
+        maybeRunDailyCompletedTaskCleanup();
+
         refreshCategories();
         syncFabVisibility();
+    }
+
+    private void maybeRunDailyCompletedTaskCleanup() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) {
+            return;
+        }
+
+        String uid = user.getUid();
+        String todayKey = getTodayKey();
+
+        android.content.SharedPreferences prefs = getSharedPreferences(PREFS_TASK_CLEANUP, MODE_PRIVATE);
+        String lastKey = prefs.getString(PREF_KEY_LAST_CLEANUP_DAY_PREFIX + uid, "");
+        if (todayKey.equals(lastKey)) {
+            return;
+        }
+
+        long todayStartMillis = normalizeToStartOfDay(System.currentTimeMillis());
+        Date todayStartDate = new Date(todayStartMillis);
+
+        CollectionReference tasksRef = UserFirestorePaths.getUserCollection("tasks");
+        if (tasksRef == null) {
+            return;
+        }
+
+        Set<String> deletedIds = new HashSet<>();
+        deleteCompletedTasksBefore(tasksRef, todayStartDate, deletedIds, () -> {
+            // Extra safety: purge older completed tasks that might miss `completedAt`.
+            purgeCompletedTasksWithoutTimestamp(tasksRef, "completed", todayStartDate, deletedIds, () ->
+                    purgeCompletedTasksWithoutTimestamp(tasksRef, "isCompleted", todayStartDate, deletedIds, () ->
+                            prefs.edit().putString(PREF_KEY_LAST_CLEANUP_DAY_PREFIX + uid, todayKey).apply()
+                    )
+            );
+        });
+    }
+
+    @NonNull
+    private String getTodayKey() {
+        Calendar c = Calendar.getInstance();
+        return String.format(Locale.US, "%04d%02d%02d",
+                c.get(Calendar.YEAR),
+                c.get(Calendar.MONTH) + 1,
+                c.get(Calendar.DAY_OF_MONTH));
+    }
+
+    private long normalizeToStartOfDay(long millis) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(millis);
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        return calendar.getTimeInMillis();
+    }
+
+    private interface VoidCallback {
+        void onDone();
+    }
+
+    private void deleteCompletedTasksBefore(@NonNull CollectionReference tasksRef,
+                                           @NonNull Date todayStart,
+                                           @NonNull Set<String> deletedIds,
+                                           @NonNull VoidCallback onDone) {
+        // Query only by `completedAt` to avoid composite indexes.
+        Query q = tasksRef
+                .whereLessThan("completedAt", todayStart)
+                .orderBy("completedAt")
+                .limit(450);
+
+        q.get()
+                .addOnSuccessListener(snapshot -> {
+                    List<DocumentSnapshot> docs = snapshot.getDocuments();
+                    if (docs.isEmpty()) {
+                        onDone.onDone();
+                        return;
+                    }
+
+                    WriteBatch batch = FirebaseFirestore.getInstance().batch();
+                    for (DocumentSnapshot doc : docs) {
+                        batch.delete(doc.getReference());
+                        deletedIds.add(doc.getId());
+                    }
+
+                    batch.commit()
+                            .addOnSuccessListener(unused -> deleteCompletedTasksBefore(tasksRef, todayStart, deletedIds, onDone))
+                            .addOnFailureListener(error -> {
+                                // If we fail (offline, permission, etc.), don't mark prefs.
+                            });
+                })
+                .addOnFailureListener(error -> {
+                    // Don't mark prefs on failure.
+                });
+    }
+
+    private void purgeCompletedTasksWithoutTimestamp(@NonNull CollectionReference tasksRef,
+                                                     @NonNull String completedField,
+                                                     @NonNull Date todayStart,
+                                                     @NonNull Set<String> deletedIds,
+                                                     @NonNull VoidCallback onDone) {
+        // Some older docs might have boolean completion set but missing completedAt.
+        tasksRef.whereEqualTo(completedField, true)
+                .limit(450)
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    List<DocumentSnapshot> docs = snapshot.getDocuments();
+                    if (docs.isEmpty()) {
+                        onDone.onDone();
+                        return;
+                    }
+
+                    List<DocumentSnapshot> toDelete = new ArrayList<>();
+                    for (DocumentSnapshot doc : docs) {
+                        if (deletedIds.contains(doc.getId())) {
+                            continue;
+                        }
+                        Date completedAt = doc.getDate("completedAt");
+                        if (completedAt == null || completedAt.before(todayStart)) {
+                            toDelete.add(doc);
+                        }
+                    }
+
+                    if (toDelete.isEmpty()) {
+                        // Nothing to delete in this batch; assume remaining are today-completed.
+                        onDone.onDone();
+                        return;
+                    }
+
+                    WriteBatch batch = FirebaseFirestore.getInstance().batch();
+                    for (DocumentSnapshot doc : toDelete) {
+                        batch.delete(doc.getReference());
+                        deletedIds.add(doc.getId());
+                    }
+
+                    batch.commit()
+                            .addOnSuccessListener(unused -> purgeCompletedTasksWithoutTimestamp(tasksRef, completedField, todayStart, deletedIds, onDone))
+                            .addOnFailureListener(error -> {
+                                // Don't mark prefs on failure.
+                            });
+                })
+                .addOnFailureListener(error -> {
+                    // Don't mark prefs on failure.
+                });
     }
 
     @Override
