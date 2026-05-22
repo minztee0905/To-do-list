@@ -82,6 +82,8 @@
     <string name="add_task_send">Gửi Task</string>
     <string name="search_hint">Bạn muốn tìm gì?</string>
     <string name="search_clear">Xóa tìm kiếm</string>
+    <string name="search_empty_hint">Nhập từ khóa để tìm công việc</string>
+    <string name="search_no_results">Không tìm thấy công việc phù hợp</string>
     <string name="menu_pomodoro_button">Mở Pomodoro</string>
     <string name="pomodoro_title">Pomodoro</string>
     <string name="pomodoro_history">Lịch sử</string>

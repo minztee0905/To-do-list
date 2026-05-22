@@ -22,16 +22,28 @@ public class EisenhowerTaskAdapter extends RecyclerView.Adapter<EisenhowerTaskAd
         void onTaskCheckedChanged(@NonNull Task task, boolean isChecked);
     }
 
+    public interface OnTaskLongPressListener {
+        void onTaskLongPressed(@NonNull View anchorView, @NonNull Task task);
+    }
+
     private final List<Task> tasks = new ArrayList<>();
     @Nullable
     private final OnTaskCheckedChangeListener checkedChangeListener;
+    @Nullable
+    private final OnTaskLongPressListener longPressListener;
 
     public EisenhowerTaskAdapter() {
         this(null);
     }
 
     public EisenhowerTaskAdapter(@Nullable OnTaskCheckedChangeListener checkedChangeListener) {
+        this(checkedChangeListener, null);
+    }
+
+    public EisenhowerTaskAdapter(@Nullable OnTaskCheckedChangeListener checkedChangeListener,
+                                 @Nullable OnTaskLongPressListener longPressListener) {
         this.checkedChangeListener = checkedChangeListener;
+        this.longPressListener = longPressListener;
     }
 
     @NonNull
@@ -62,6 +74,14 @@ public class EisenhowerTaskAdapter extends RecyclerView.Adapter<EisenhowerTaskAd
             holder.tvTaskTitle.setAlpha(0.6f);
         } else {
             holder.tvTaskTitle.setAlpha(1f);
+        }
+
+        holder.itemView.setOnLongClickListener(null);
+        if (longPressListener != null) {
+            holder.itemView.setOnLongClickListener(v -> {
+                longPressListener.onTaskLongPressed(v, task);
+                return true;
+            });
         }
     }
 

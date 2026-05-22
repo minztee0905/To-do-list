@@ -39,21 +39,36 @@ public class CategoryFragment extends Fragment {
 
     private static final String ARG_TITLE = "arg_title";
     private static final String ARG_CATEGORY_ID = "arg_category_id";
+    private static final String ARG_HIGHLIGHT_TASK_ID = "arg_highlight_task_id";
 
     private String categoryId;
+    @Nullable
+    private String pendingHighlightTaskId;
+
     private TaskAdapter taskAdapter;
     private TextView tvEmptyTasks;
     private ListenerRegistration taskListener;
+
+    private RecyclerView rvTasks;
 
     private ItemTouchHelper taskItemTouchHelper;
 
     private static final String TAG_EDIT_TASK_SHEET = "edit_task_sheet";
 
     public static CategoryFragment newInstance(String title, @Nullable String categoryId) {
+        return newInstance(title, categoryId, null);
+    }
+
+    public static CategoryFragment newInstance(String title,
+                                               @Nullable String categoryId,
+                                               @Nullable String highlightTaskId) {
         CategoryFragment fragment = new CategoryFragment();
         Bundle args = new Bundle();
         args.putString(ARG_TITLE, title);
         args.putString(ARG_CATEGORY_ID, categoryId);
+        if (highlightTaskId != null && !highlightTaskId.trim().isEmpty()) {
+            args.putString(ARG_HIGHLIGHT_TASK_ID, highlightTaskId);
+        }
         fragment.setArguments(args);
         return fragment;
     }
@@ -64,6 +79,7 @@ public class CategoryFragment extends Fragment {
         Bundle args = getArguments();
         if (args != null) {
             categoryId = args.getString(ARG_CATEGORY_ID);
+            pendingHighlightTaskId = args.getString(ARG_HIGHLIGHT_TASK_ID);
         }
     }
 
@@ -79,7 +95,7 @@ public class CategoryFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        RecyclerView rvTasks = view.findViewById(R.id.rvCategoryTasks);
+        rvTasks = view.findViewById(R.id.rvCategoryTasks);
         tvEmptyTasks = view.findViewById(R.id.tvEmptyTasks);
 
         taskAdapter = new TaskAdapter(
@@ -304,6 +320,7 @@ public class CategoryFragment extends Fragment {
         stopTaskListener();
         taskAdapter = null;
         tvEmptyTasks = null;
+        rvTasks = null;
     }
 
     private void startTaskListener() {
@@ -336,10 +353,56 @@ public class CategoryFragment extends Fragment {
                     }
 
                     List<Task> tasks = mapSnapshotToTasks(snapshot);
-                    Collections.sort(tasks, Comparator.comparingInt(Task::getOrder));
+                    Collections.sort(tasks, Comparator
+                            .comparing(Task::isCompleted)
+                            .thenComparingInt(Task::getOrder));
                     taskAdapter.submitList(tasks);
                     showEmptyState(tasks.isEmpty());
+
+                    maybeScrollToHighlightedTask(tasks);
                 });
+    }
+
+    private void maybeScrollToHighlightedTask(@NonNull List<Task> tasks) {
+        if (pendingHighlightTaskId == null || pendingHighlightTaskId.trim().isEmpty()) {
+            return;
+        }
+        if (taskAdapter == null || rvTasks == null) {
+            return;
+        }
+
+        String targetId = pendingHighlightTaskId.trim();
+        int position = -1;
+        for (int i = 0; i < tasks.size(); i++) {
+            Task t = tasks.get(i);
+            if (t != null && t.getId() != null && targetId.equals(t.getId().trim())) {
+                position = i;
+                break;
+            }
+        }
+
+        // Consume the pending request so it doesn't keep re-scrolling on every snapshot update.
+        pendingHighlightTaskId = null;
+
+        if (position < 0) {
+            return;
+        }
+
+        final int targetPosition = position;
+
+        taskAdapter.setHighlightedTaskId(targetId);
+        taskAdapter.notifyDataSetChanged();
+
+        rvTasks.post(() -> rvTasks.smoothScrollToPosition(targetPosition));
+
+        // Clear highlight after a short delay.
+        rvTasks.postDelayed(() -> {
+            if (!isAdded() || taskAdapter == null) {
+                return;
+            }
+            taskAdapter.setHighlightedTaskId(null);
+            taskAdapter.notifyDataSetChanged();
+        }, 1200L);
     }
 
     private void stopTaskListener() {

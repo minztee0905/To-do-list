@@ -32,6 +32,10 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
         void onTaskCheckedChanged(@NonNull Task task, boolean isChecked);
     }
 
+    public interface OnTaskClickListener {
+        void onTaskClicked(@NonNull Task task);
+    }
+
     private final List<Task> tasks = new ArrayList<>();
     @Nullable
     private final OnTaskMoreClickListener moreClickListener;
@@ -39,6 +43,11 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
     private final OnStartDragListener dragListener;
     @Nullable
     private final OnTaskCheckedChangeListener checkedChangeListener;
+    @Nullable
+    private final OnTaskClickListener clickListener;
+
+    @Nullable
+    private String highlightedTaskId;
 
     public TaskAdapter() {
         this(null);
@@ -51,9 +60,21 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
     public TaskAdapter(@Nullable OnTaskMoreClickListener moreClickListener,
                        @Nullable OnStartDragListener dragListener,
                        @Nullable OnTaskCheckedChangeListener checkedChangeListener) {
+        this(moreClickListener, dragListener, checkedChangeListener, null);
+    }
+
+    public TaskAdapter(@Nullable OnTaskMoreClickListener moreClickListener,
+                       @Nullable OnStartDragListener dragListener,
+                       @Nullable OnTaskCheckedChangeListener checkedChangeListener,
+                       @Nullable OnTaskClickListener clickListener) {
         this.moreClickListener = moreClickListener;
         this.dragListener = dragListener;
         this.checkedChangeListener = checkedChangeListener;
+        this.clickListener = clickListener;
+    }
+
+    public void setHighlightedTaskId(@Nullable String taskId) {
+        this.highlightedTaskId = taskId;
     }
 
     @NonNull
@@ -66,6 +87,14 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
     @Override
     public void onBindViewHolder(@NonNull TaskViewHolder holder, int position) {
         Task task = tasks.get(position);
+
+        if (highlightedTaskId != null
+                && task.getId() != null
+                && highlightedTaskId.trim().equals(task.getId().trim())) {
+            holder.itemView.setBackgroundResource(R.drawable.bg_task_item_highlight);
+        } else {
+            holder.itemView.setBackgroundResource(R.drawable.bg_task_item);
+        }
 
         holder.tvTaskTitle.setText(task.getTitle() != null ? task.getTitle() : "");
         holder.cbTask.setOnCheckedChangeListener(null);
@@ -92,6 +121,13 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
                     moreClickListener.onTaskMoreClick(v, task);
                 }
             });
+        }
+
+        // Optional row click (used by Search screen). Must clear on recycled views.
+        holder.itemView.setOnClickListener(null);
+        holder.itemView.setClickable(clickListener != null);
+        if (clickListener != null) {
+            holder.itemView.setOnClickListener(v -> clickListener.onTaskClicked(task));
         }
 
         // Long-press on body to start drag reorder.

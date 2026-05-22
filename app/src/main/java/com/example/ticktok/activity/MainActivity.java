@@ -959,6 +959,53 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Navigate to a Category screen by Firestore categoryId.
+     * Used by Search results to jump directly to the category that contains a task.
+     */
+    public void openCategoryById(@NonNull String categoryId) {
+        openCategoryById(categoryId, null);
+    }
+
+    /** Same as {@link #openCategoryById(String)} but optionally scrolls/highlights a specific task. */
+    public void openCategoryById(@NonNull String categoryId, @Nullable String highlightTaskId) {
+        if (categoryId.trim().isEmpty()) {
+            return;
+        }
+
+        // Prefer using the existing menu-based navigation so header/dock/chrome stay consistent.
+        Category found = null;
+        for (Category c : menuCategories) {
+            if (c != null && c.getId() != null && c.getId().trim().equals(categoryId.trim())) {
+                found = c;
+                break;
+            }
+        }
+
+        clearContentBackStackIfNeeded();
+
+        if (found != null && found.getTitle() != null && !found.getTitle().trim().isEmpty()) {
+            selectedMenuTitle = normalizeTitle(found.getTitle());
+            selectedCategoryId = categoryId.trim();
+        } else {
+            // Fallback if categories aren't loaded yet or title can't be resolved.
+            selectedMenuTitle = getString(R.string.menu_categories);
+            selectedCategoryId = categoryId.trim();
+        }
+
+        updateHeader(selectedMenuTitle);
+        applyScreenChrome(selectedMenuTitle);
+        updateDockSelection(selectedMenuTitle);
+
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(
+                        R.id.contentFragmentContainer,
+                        CategoryFragment.newInstance(selectedMenuTitle, selectedCategoryId, highlightTaskId)
+                )
+                .commit();
+    }
+
     private void clearContentBackStackIfNeeded() {
         FragmentManager fm = getSupportFragmentManager();
         if (fm.isStateSaved()) {

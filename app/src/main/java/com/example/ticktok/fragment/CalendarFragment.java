@@ -2,13 +2,18 @@ package com.example.ticktok.fragment;
 
 import android.graphics.Rect;
 import android.os.Bundle;
+import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.widget.PopupMenu;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -36,6 +41,8 @@ import java.util.Set;
 public class CalendarFragment extends Fragment {
 
     private static final long MILLIS_PER_DAY = 24L * 60L * 60L * 1000L;
+
+    private static final String TAG_EDIT_TASK_SHEET = "tag_edit_task_sheet_calendar";
 
     private RecyclerView rvCalendar;
     private CalendarAdapter calendarAdapter;
@@ -149,8 +156,80 @@ public class CalendarFragment extends Fragment {
         if (rvTasks.getItemDecorationCount() == 0) {
             rvTasks.addItemDecoration(new VerticalSpaceItemDecoration(dpToPx(2)));
         }
-        taskAdapter = new TaskAdapter(null, null, this::onTaskCheckedChanged);
+        taskAdapter = new TaskAdapter(this::onTaskMoreClicked, null, this::onTaskCheckedChanged);
         rvTasks.setAdapter(taskAdapter);
+    }
+
+    private void onTaskMoreClicked(@NonNull View anchorView, @NonNull Task task) {
+        PopupMenu popupMenu = new PopupMenu(requireContext(), anchorView, Gravity.END);
+        popupMenu.getMenuInflater().inflate(R.menu.menu_task_actions, popupMenu.getMenu());
+        popupMenu.setOnMenuItemClickListener(item -> handleTaskAction(item, task));
+        popupMenu.show();
+    }
+
+    private boolean handleTaskAction(@NonNull MenuItem item, @NonNull Task task) {
+        int id = item.getItemId();
+        if (id == R.id.action_task_edit) {
+            openEditTaskSheet(task);
+            return true;
+        }
+        if (id == R.id.action_task_delete) {
+            confirmDeleteTask(task);
+            return true;
+        }
+        return false;
+    }
+
+    private void openEditTaskSheet(@NonNull Task task) {
+        if (!isAdded()) {
+            return;
+        }
+        if (task.getId() == null || task.getId().trim().isEmpty()) {
+            Toast.makeText(requireContext(), R.string.delete_task_failed, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (requireActivity().getSupportFragmentManager().findFragmentByTag(TAG_EDIT_TASK_SHEET) != null) {
+            return;
+        }
+        AddTaskBottomSheetFragment sheet = AddTaskBottomSheetFragment.newInstanceForEdit(task);
+        sheet.show(requireActivity().getSupportFragmentManager(), TAG_EDIT_TASK_SHEET);
+    }
+
+    private void confirmDeleteTask(@NonNull Task task) {
+        String title = task.getTitle() == null ? "" : task.getTitle();
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.delete_task_title)
+                .setMessage(getString(R.string.delete_task_message, title))
+                .setNegativeButton(R.string.action_cancel, null)
+                .setPositiveButton(R.string.action_delete, (dialog, which) -> deleteTask(task))
+                .show();
+    }
+
+    private void deleteTask(@NonNull Task task) {
+        if (task.getId() == null || task.getId().trim().isEmpty()) {
+            Toast.makeText(requireContext(), R.string.delete_task_failed, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        CollectionReference tasksRef = UserFirestorePaths.getUserCollection("tasks");
+        if (tasksRef == null) {
+            Toast.makeText(requireContext(), R.string.auth_error_login_required, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        tasksRef.document(task.getId().trim())
+                .delete()
+                .addOnSuccessListener(unused -> {
+                    ReminderManager.cancelReminder(requireContext(), task.getId().trim());
+                    if (isAdded()) {
+                        Toast.makeText(requireContext(), R.string.delete_task_success, Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    if (isAdded()) {
+                        Toast.makeText(requireContext(), R.string.delete_task_failed, Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     private void onTaskCheckedChanged(@NonNull Task task, boolean isChecked) {
@@ -215,10 +294,10 @@ public class CalendarFragment extends Fragment {
         tvEmptyQuadrant3 = rootView.findViewById(R.id.tvEmptyQuadrant3);
         tvEmptyQuadrant4 = rootView.findViewById(R.id.tvEmptyQuadrant4);
 
-        quadrantAdapter1 = new EisenhowerTaskAdapter(this::onTaskCheckedChanged);
-        quadrantAdapter2 = new EisenhowerTaskAdapter(this::onTaskCheckedChanged);
-        quadrantAdapter3 = new EisenhowerTaskAdapter(this::onTaskCheckedChanged);
-        quadrantAdapter4 = new EisenhowerTaskAdapter(this::onTaskCheckedChanged);
+        quadrantAdapter1 = new EisenhowerTaskAdapter(this::onTaskCheckedChanged, this::onEisenhowerTaskLongPressed);
+        quadrantAdapter2 = new EisenhowerTaskAdapter(this::onTaskCheckedChanged, this::onEisenhowerTaskLongPressed);
+        quadrantAdapter3 = new EisenhowerTaskAdapter(this::onTaskCheckedChanged, this::onEisenhowerTaskLongPressed);
+        quadrantAdapter4 = new EisenhowerTaskAdapter(this::onTaskCheckedChanged, this::onEisenhowerTaskLongPressed);
 
         bindQuadrantRecycler(rvQuadrant1, quadrantAdapter1);
         bindQuadrantRecycler(rvQuadrant2, quadrantAdapter2);
@@ -229,6 +308,14 @@ public class CalendarFragment extends Fragment {
         showQuadrantEmpty(tvEmptyQuadrant2, true);
         showQuadrantEmpty(tvEmptyQuadrant3, true);
         showQuadrantEmpty(tvEmptyQuadrant4, true);
+    }
+
+    private void onEisenhowerTaskLongPressed(@NonNull View anchorView, @NonNull Task task) {
+        // Eisenhower item layout is compact (no 'more' icon), so we use long-press to show actions.
+        PopupMenu popupMenu = new PopupMenu(requireContext(), anchorView, Gravity.END);
+        popupMenu.getMenuInflater().inflate(R.menu.menu_task_actions, popupMenu.getMenu());
+        popupMenu.setOnMenuItemClickListener(item -> handleTaskAction(item, task));
+        popupMenu.show();
     }
 
     private void bindQuadrantRecycler(@Nullable RecyclerView recyclerView, @Nullable EisenhowerTaskAdapter adapter) {
@@ -298,6 +385,9 @@ public class CalendarFragment extends Fragment {
                     }
 
                     List<Task> tasks = mapSnapshotToTasks(snapshot);
+                    tasks.sort(java.util.Comparator
+                            .comparing(Task::isCompleted)
+                            .thenComparingInt(Task::getOrder));
                     taskAdapter.submitList(tasks);
                     showEmptyState(tasks.isEmpty());
                 });
