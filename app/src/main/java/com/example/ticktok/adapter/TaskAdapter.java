@@ -101,7 +101,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
         holder.cbTask.setChecked(task.isCompleted());
 
         holder.cbTask.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            // Update local state immediately so RecyclerView rebinds don't revert the UI.
+
             task.setCompleted(isChecked);
             if (checkedChangeListener != null) {
                 checkedChangeListener.onTaskCheckedChanged(task, isChecked);
@@ -123,14 +123,12 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
             });
         }
 
-        // Optional row click (used by Search screen). Must clear on recycled views.
         holder.itemView.setOnClickListener(null);
         holder.itemView.setClickable(clickListener != null);
         if (clickListener != null) {
             holder.itemView.setOnClickListener(v -> clickListener.onTaskClicked(task));
         }
 
-        // Long-press on body to start drag reorder.
         holder.itemView.setOnLongClickListener(v -> {
             if (dragListener == null) {
                 return false;

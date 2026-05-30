@@ -50,6 +50,8 @@
     <string name="add_category_hint">Ví dụ: Dòng tiền</string>
     <string name="action_save">Lưu</string>
     <string name="action_cancel">Hủy</string>
+    <string name="action_yes">Có</string>
+    <string name="action_no">Không</string>
     <string name="action_edit">Sửa</string>
     <string name="action_delete">Xoá</string>
     <string name="error_empty_category">Tên danh mục không được để trống</string>
@@ -117,6 +119,25 @@
     <string name="pomodoro_task_no_due_date">Không có hạn</string>
     <string name="pomodoro_task_meta_format">%1$s • %2$s</string>
 
+    <!-- Focus statistics -->
+    <string name="focus_statistics_title">Thống kê Pomodoro</string>
+    <string name="focus_record_title">Lịch sử hôm nay</string>
+    <string name="focus_stats_today_pomo">Pomo hôm nay</string>
+    <string name="focus_stats_today_focus_hours">Giờ tập trung hôm nay</string>
+    <string name="focus_stats_total_pomo">Tổng Pomo tuần</string>
+    <string name="focus_stats_total_focus_duration">Tổng thời gian tập trung tuần</string>
+    <string name="focus_stats_close">Đóng</string>
+    <string name="focus_stats_share">Chia sẻ</string>
+    <string name="focus_stats_chart_title">Phân bổ thời gian</string>
+    <string name="focus_stats_chart_center_today">Phân bổ hôm nay</string>
+    <string name="focus_stats_share_chooser_title">Chia sẻ</string>
+    <string name="focus_stats_share_unavailable">Không có ứng dụng để chia sẻ</string>
+    <string name="focus_stats_login_required">Bạn cần đăng nhập để xem thống kê</string>
+    <string name="focus_stats_load_failed">Không thể tải dữ liệu Pomodoro</string>
+    <string name="focus_stats_placeholder_count">0</string>
+    <string name="focus_stats_placeholder_hours">0.0</string>
+    <string name="focus_stats_placeholder_duration">0h 0m</string>
+
     <string name="priority_high">Ưu tiên cao</string>
     <string name="priority_medium">Ưu tiên vừa</string>
     <string name="priority_low">Ưu tiên thấp</string>
@@ -144,6 +165,18 @@
     <string name="register_success">Tạo tài khoản thành công</string>
     <string name="settings_back">Trở về</string>
     <string name="settings_logout">Đăng xuất</string>
+    <string name="settings_title">Cài đặt</string>
+    <string name="settings_account">Tài khoản</string>
+    <string name="settings_theme">Giao diện</string>
+    <string name="settings_theme_system">Theo hệ thống</string>
+    <string name="settings_theme_light">Sáng</string>
+    <string name="settings_theme_dark">Tối</string>
+    <string name="settings_sound_notifications">Âm thanh &amp; Thông báo</string>
+    <string name="settings_pomodoro">Cài đặt Pomodoro</string>
+    <string name="settings_app_info">Thông tin ứng dụng</string>
+    <string name="settings_feature_coming_soon">Tính năng đang phát triển</string>
+    <string name="settings_logout_confirm_title">Đăng xuất</string>
+    <string name="settings_logout_confirm_message">Bạn có chắc muốn đăng xuất không?</string>
     <string name="auth_loading">Đang xử lý...</string>
     <string name="auth_error_empty_fields">Vui lòng nhập đầy đủ thông tin</string>
     <string name="auth_error_password_mismatch">Mật khẩu xác nhận không khớp</string>
@@ -185,7 +218,16 @@
     <!-- Local notifications -->
     <string name="notification_task_reminder_body">Đến giờ làm task này rồi</string>
     <string name="notification_task_reminder_channel_description">Nhắc nhở theo thời gian bạn đặt cho từng task</string>
+    <string name="notification_event_reminder_body_one_day_before">Ngày mai có sự kiện của bạn</string>
+    <string name="notification_event_reminder_body_day_of">Hôm nay có sự kiện của bạn</string>
+    <string name="notification_event_reminder_channel_description">Nhắc nhở sự kiện lúc 8 giờ sáng (trước 1 ngày và đúng ngày diễn ra)</string>
 
     <string name="reminder_cleared">Đã xoá nhắc nhở</string>
     <string name="reminder_time_in_past_cleared">Thời gian nhắc nhở đã qua, mình đã bỏ nhắc nhở</string>
+    <string name="pause_pomodoro">Dừng</string>
+    <string name="continues_pomodoro">Tiếp tục</string>
+    <string name="finish_pomodoro">Hoàn thành</string>
+    <string name="pomodoro_history_saved">Đã lưu lịch sử Pomodoro</string>
+    <string name="pomodoro_history_save_failed">Lưu lịch sử Pomodoro thất bại</string>
+    <string name="pomodoro_complete_only_focus">Chỉ lưu lịch sử khi hoàn thành phiên tập trung</string>
 </resources>

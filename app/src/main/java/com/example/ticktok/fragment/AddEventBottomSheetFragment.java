@@ -28,6 +28,8 @@ import androidx.core.content.ContextCompat;
 
 import com.example.ticktok.R;
 import com.example.ticktok.model.Event;
+import com.example.ticktok.reminder.EventReminderManager;
+import com.example.ticktok.reminder.ReminderManager;
 import com.example.ticktok.util.UserFirestorePaths;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
@@ -314,6 +316,12 @@ public class AddEventBottomSheetFragment extends BottomSheetDialogFragment {
                         if (!isAdded()) {
                             return;
                         }
+
+                        Event updated = new Event(title, selectedEventIcon, targetDate);
+                        updated.setId(editingEventId.trim());
+                        ReminderManager.ensureNotificationPermission(requireActivity());
+                        EventReminderManager.setEventReminders(requireContext(), updated);
+
                         Toast.makeText(requireContext(), R.string.edit_event_success, Toast.LENGTH_SHORT).show();
                         hideKeyboard();
                         dismissAllowingStateLoss();
@@ -338,6 +346,12 @@ public class AddEventBottomSheetFragment extends BottomSheetDialogFragment {
                     if (!isAdded()) {
                         return;
                     }
+
+
+                    event.setId(documentReference.getId());
+                    ReminderManager.ensureNotificationPermission(requireActivity());
+                    EventReminderManager.setEventReminders(requireContext(), event);
+
                     Toast.makeText(requireContext(), R.string.add_event_success, Toast.LENGTH_SHORT).show();
                     hideKeyboard();
                     dismissAllowingStateLoss();

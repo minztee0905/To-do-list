@@ -1,6 +1,7 @@
 package com.example.ticktok.fragment;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
@@ -26,6 +27,7 @@ import androidx.appcompat.widget.AppCompatButton;
 import androidx.fragment.app.Fragment;
 
 import com.example.ticktok.R;
+import com.example.ticktok.activity.FocusStatisticsActivity;
 import com.example.ticktok.model.Task;
 import com.example.ticktok.util.UserFirestorePaths;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -34,11 +36,13 @@ import com.google.firebase.firestore.QuerySnapshot;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 
+import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import java.util.Locale;
 
@@ -69,6 +73,10 @@ public class PomodoroFragment extends Fragment {
     private ProgressBar progressPomodoro;
     private AppCompatButton btnStartPomodoro;
     private AppCompatButton btnResetPomodoro;
+    private View layoutActiveButtons;
+    private ImageButton btnPausePomodoro;
+    private ImageButton btnResumePomodoro;
+    private AppCompatButton btnCompletePomodoro;
     private View viewDurationPickerScrim;
     private MaterialCardView cardDurationPicker;
     private EditText etCustomDurationMinutes;
@@ -108,6 +116,10 @@ public class PomodoroFragment extends Fragment {
         progressPomodoro = view.findViewById(R.id.progressPomodoro);
         btnStartPomodoro = view.findViewById(R.id.btnStartPomodoro);
         btnResetPomodoro = view.findViewById(R.id.btnResetPomodoro);
+        layoutActiveButtons = view.findViewById(R.id.layoutActiveButtons);
+        btnPausePomodoro = view.findViewById(R.id.btnPausePomodoro);
+        btnResumePomodoro = view.findViewById(R.id.btnResumePomodoro);
+        btnCompletePomodoro = view.findViewById(R.id.btnCompletePomodoro);
         viewDurationPickerScrim = view.findViewById(R.id.viewDurationPickerScrim);
         cardDurationPicker = view.findViewById(R.id.cardDurationPicker);
         etCustomDurationMinutes = view.findViewById(R.id.etCustomDurationMinutes);
@@ -115,7 +127,7 @@ public class PomodoroFragment extends Fragment {
         btnCancelDuration = view.findViewById(R.id.btnCancelDuration);
 
         ImageButton btnPomodoroHistory = view.findViewById(R.id.btnPomodoroHistory);
-        ImageButton btnPomodoroMore = view.findViewById(R.id.btnPomodoroMore);
+
         View pomodoroClockContainer = view.findViewById(R.id.pomodoroClockContainer);
 
         setupDurationPresetButtons(view);
@@ -123,16 +135,23 @@ public class PomodoroFragment extends Fragment {
         if (btnStartPomodoro != null) {
             btnStartPomodoro.setOnClickListener(v -> handleStartButtonClick());
         }
+
+        if (btnPausePomodoro != null) {
+            btnPausePomodoro.setOnClickListener(v -> handlePauseButtonClick());
+        }
+        if (btnResumePomodoro != null) {
+            btnResumePomodoro.setOnClickListener(v -> handleResumeButtonClick());
+        }
+        if (btnCompletePomodoro != null) {
+            btnCompletePomodoro.setOnClickListener(v -> handleCompleteButtonClick());
+        }
         if (btnPomodoroHistory != null) {
-            btnPomodoroHistory.setOnClickListener(v ->
-                    Toast.makeText(requireContext(), getString(R.string.pomodoro_history_coming_soon), Toast.LENGTH_SHORT).show()
-            );
+            btnPomodoroHistory.setOnClickListener(v -> {
+                Intent intent = new Intent(requireContext(), FocusStatisticsActivity.class);
+                startActivity(intent);
+            });
         }
-        if (btnPomodoroMore != null) {
-            btnPomodoroMore.setOnClickListener(v ->
-                    Toast.makeText(requireContext(), getString(R.string.pomodoro_options_coming_soon), Toast.LENGTH_SHORT).show()
-            );
-        }
+
         if (btnResetPomodoro != null) {
             btnResetPomodoro.setOnClickListener(v -> handleResetButtonClick());
         }
@@ -197,6 +216,10 @@ public class PomodoroFragment extends Fragment {
         progressPomodoro = null;
         btnStartPomodoro = null;
         btnResetPomodoro = null;
+        layoutActiveButtons = null;
+        btnPausePomodoro = null;
+        btnResumePomodoro = null;
+        btnCompletePomodoro = null;
         viewDurationPickerScrim = null;
         cardDurationPicker = null;
         etCustomDurationMinutes = null;
@@ -206,15 +229,53 @@ public class PomodoroFragment extends Fragment {
     }
 
     private void handleStartButtonClick() {
-        if (isRunning) {
-            pauseTimer();
-            return;
-        }
-        if (isPaused) {
-            startTimer(remainingMillis);
+
+        if (isRunning || isPaused) {
             return;
         }
         startTimer(totalMillis);
+        renderTimerUI();
+    }
+
+    private void handlePauseButtonClick() {
+        if (!isRunning) {
+            return;
+        }
+
+        pauseTimer();
+        renderTimerUI();
+    }
+
+    private void handleResumeButtonClick() {
+        if (!isPaused) {
+            return;
+        }
+
+        startTimer(remainingMillis);
+        renderTimerUI();
+    }
+
+    private void handleCompleteButtonClick() {
+        if (!isRunning && !isPaused) {
+            return;
+        }
+
+
+        cancelTimer();
+        isRunning = false;
+        isPaused = false;
+        runningEndElapsedRealtime = -1L;
+
+
+        if (currentMode != SessionMode.FOCUS) {
+            if (isAdded()) {
+                Toast.makeText(requireContext(), getString(R.string.pomodoro_complete_only_focus), Toast.LENGTH_SHORT).show();
+            }
+            handleResetButtonClick();
+            return;
+        }
+
+        savePomodoroHistoryAndReset();
     }
 
     private void restoreTimerState(@Nullable Bundle savedInstanceState) {
@@ -336,6 +397,7 @@ public class PomodoroFragment extends Fragment {
             progressPomodoro.setProgress(percent);
         }
         updateStartButtonState();
+        syncActiveControlsVisibility();
         updateResetButtonVisibility();
         syncStateToSessionStore();
     }
@@ -344,12 +406,32 @@ public class PomodoroFragment extends Fragment {
         if (btnStartPomodoro == null) {
             return;
         }
-        if (isRunning) {
-            btnStartPomodoro.setText(R.string.pomodoro_pause);
-        } else if (isPaused) {
-            btnStartPomodoro.setText(R.string.pomodoro_resume);
-        } else {
-            btnStartPomodoro.setText(R.string.pomodoro_start);
+
+        btnStartPomodoro.setText(R.string.pomodoro_start);
+    }
+
+    private void syncActiveControlsVisibility() {
+        boolean sessionActive = isRunning || isPaused;
+
+        if (btnStartPomodoro != null) {
+            btnStartPomodoro.setVisibility(sessionActive ? View.GONE : View.VISIBLE);
+        }
+        if (layoutActiveButtons != null) {
+            layoutActiveButtons.setVisibility(sessionActive ? View.VISIBLE : View.GONE);
+        }
+
+
+        if (btnResetPomodoro != null) {
+            btnResetPomodoro.setVisibility(sessionActive ? View.VISIBLE : View.GONE);
+        }
+
+
+        if (btnPausePomodoro != null) {
+            btnPausePomodoro.setVisibility(isRunning ? View.VISIBLE : View.GONE);
+        }
+
+        if (btnResumePomodoro != null) {
+            btnResumePomodoro.setVisibility(isPaused ? View.VISIBLE : View.GONE);
         }
     }
 
@@ -358,12 +440,56 @@ public class PomodoroFragment extends Fragment {
             return;
         }
 
-        boolean hasStartedSession = isRunning
-                || isPaused
-                || currentMode != SessionMode.FOCUS
-                || remainingMillis < totalMillis;
 
-        btnResetPomodoro.setVisibility(hasStartedSession ? View.VISIBLE : View.GONE);
+        boolean sessionActive = isRunning || isPaused;
+        btnResetPomodoro.setVisibility(sessionActive ? View.VISIBLE : View.GONE);
+    }
+
+    private void savePomodoroHistoryAndReset() {
+        if (!isAdded()) {
+            return;
+        }
+
+        String uid = UserFirestorePaths.getCurrentUid();
+        if (uid == null) {
+            Toast.makeText(requireContext(), getString(R.string.auth_error_login_required), Toast.LENGTH_SHORT).show();
+            handleResetButtonClick();
+            return;
+        }
+
+        String taskName = !TextUtils.isEmpty(selectedTaskTitle)
+                ? selectedTaskTitle
+                : getString(R.string.pomodoro_title);
+
+        long durationMinutes = Math.max(1L, totalMillis / 60_000L);
+        long timestamp = System.currentTimeMillis();
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("userId", uid);
+        payload.put("taskName", taskName);
+        payload.put("duration", durationMinutes);
+        payload.put("timestamp", timestamp);
+
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        db.collection("users")
+                .document(uid)
+                .collection("pomodoro")
+                .add(payload)
+                .addOnSuccessListener(ref -> {
+                    if (!isAdded()) {
+                        return;
+                    }
+                    Toast.makeText(requireContext(), getString(R.string.pomodoro_history_saved), Toast.LENGTH_SHORT).show();
+                    handleResetButtonClick();
+                })
+                .addOnFailureListener(e -> {
+                    if (!isAdded()) {
+                        return;
+                    }
+                    Toast.makeText(requireContext(), getString(R.string.pomodoro_history_save_failed), Toast.LENGTH_SHORT).show();
+
+                    handleResetButtonClick();
+                });
     }
 
     private void setupDurationPresetButtons(@NonNull View root) {
@@ -749,13 +875,13 @@ public class PomodoroFragment extends Fragment {
 
         final long todayStartMillis = getTodayStartMillis();
         Collections.sort(tasks, (left, right) -> {
-            // 1) Higher priority first.
+
             int byPriority = Integer.compare(right.getPriority(), left.getPriority());
             if (byPriority != 0) {
                 return byPriority;
             }
 
-            // 2) Closer due date to today first (absolute distance).
+
             long leftDistance = getDistanceToToday(todayStartMillis, left.getDueDate());
             long rightDistance = getDistanceToToday(todayStartMillis, right.getDueDate());
             int byDistance = Long.compare(leftDistance, rightDistance);
@@ -763,7 +889,7 @@ public class PomodoroFragment extends Fragment {
                 return byDistance;
             }
 
-            // 3) Tasks with due date first, then earlier due date.
+
             Long leftDue = left.getDueDate();
             Long rightDue = right.getDueDate();
             if (leftDue == null && rightDue != null) {
@@ -779,7 +905,7 @@ public class PomodoroFragment extends Fragment {
                 }
             }
 
-            // 4) Stable visual fallback by title.
+
             String leftTitle = left.getTitle() == null ? "" : left.getTitle().trim();
             String rightTitle = right.getTitle() == null ? "" : right.getTitle().trim();
             return leftTitle.compareToIgnoreCase(rightTitle);
@@ -856,7 +982,7 @@ public class PomodoroFragment extends Fragment {
                     int buttonMinutes = Integer.parseInt(String.valueOf(minutesTag));
                     isSelected = selectedPickerMinutes == buttonMinutes;
                 } catch (NumberFormatException ignored) {
-                    // Keep default false when button tag is malformed.
+
                 }
             }
             button.setStrokeWidth(isSelected ? 3 : 1);

@@ -105,7 +105,8 @@ public class SearchFragment extends Fragment {
             }
         });
 
-        // Initial state.
+
+
         applyFilter("");
     }
 
@@ -166,14 +167,14 @@ public class SearchFragment extends Fragment {
                 return;
             }
             if (error != null || snapshot == null) {
-                // Keep UI quiet; Search should not be noisy.
+
                 return;
             }
 
             allTasks.clear();
             allTasks.addAll(mapSnapshotToTasks(snapshot));
 
-            // Keep a stable ordering for a nicer UX.
+
             allTasks.sort(Comparator
                     .comparing(Task::isCompleted)
                     .thenComparingLong((Task t) -> t.getDueDate() != null ? t.getDueDate() : Long.MAX_VALUE)
@@ -343,7 +344,7 @@ public class SearchFragment extends Fragment {
 
         tasksRef.document(task.getId().trim())
                 .update(
-                        // Write both keys to be compatible with Firestore POJO mapping.
+
                         "isCompleted", isChecked,
                         "completed", isChecked,
                         "completedAt", isChecked ? FieldValue.serverTimestamp() : null

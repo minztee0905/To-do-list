@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
+        android:name=".TickTokApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -34,6 +35,10 @@
 
         <activity
             android:name=".activity.SettingsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".activity.FocusStatisticsActivity"
             android:exported="false" />
 
         <receiver

@@ -66,7 +66,7 @@ public class MenuCategoryAdapter extends RecyclerView.Adapter<MenuCategoryAdapte
     }
 
     public void moveItem(int fromPosition, int toPosition) {
-        // Position 0 is reserved for the fixed Welcome category.
+
         if (fromPosition == 0 || toPosition == 0) {
             return;
         }
@@ -143,7 +143,7 @@ public class MenuCategoryAdapter extends RecyclerView.Adapter<MenuCategoryAdapte
 
             root.setOnClickListener(v -> clickListener.onCategoryClick(category));
 
-            // Long-press on the row body starts drag (reorder).
+
             root.setOnLongClickListener(v -> {
                 if (isWelcome) {
                     return false;
@@ -155,7 +155,7 @@ public class MenuCategoryAdapter extends RecyclerView.Adapter<MenuCategoryAdapte
                 return true;
             });
 
-            // Single click on the trailing icon shows edit/delete actions.
+
             if (ivDragHandle != null) {
                 ivDragHandle.setVisibility(isWelcome ? View.INVISIBLE : View.VISIBLE);
                 ivDragHandle.setOnClickListener(v -> {

@@ -129,7 +129,6 @@ public class CategoryFragment extends Fragment {
 
             @Override
             public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
-                // no-op
             }
 
             @Override
@@ -140,7 +139,6 @@ public class CategoryFragment extends Fragment {
 
             @Override
             public boolean isLongPressDragEnabled() {
-                // Drag is started via adapter long-press on the body.
                 return false;
             }
         };
@@ -176,7 +174,6 @@ public class CategoryFragment extends Fragment {
 
         tasksRef.document(task.getId().trim())
                 .update(
-                        // Write both keys to be compatible with Firestore POJO mapping.
                         "isCompleted", isChecked,
                         "completed", isChecked,
                         "completedAt", isChecked ? FieldValue.serverTimestamp() : null
@@ -381,7 +378,6 @@ public class CategoryFragment extends Fragment {
             }
         }
 
-        // Consume the pending request so it doesn't keep re-scrolling on every snapshot update.
         pendingHighlightTaskId = null;
 
         if (position < 0) {
@@ -395,7 +391,6 @@ public class CategoryFragment extends Fragment {
 
         rvTasks.post(() -> rvTasks.smoothScrollToPosition(targetPosition));
 
-        // Clear highlight after a short delay.
         rvTasks.postDelayed(() -> {
             if (!isAdded() || taskAdapter == null) {
                 return;

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-	<!-- Checked: orange tick -->
+
 	<item android:color="@color/fab_orange" android:state_checked="true" />
 
-	<!-- Unchecked: hide the tick -->
+
 	<item android:color="@android:color/transparent" />
 </selector>
 

@@ -43,18 +43,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <ImageButton
-            android:id="@+id/btnPomodoroMore"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@android:color/transparent"
-            android:contentDescription="@string/pomodoro_more_options"
-            android:padding="8dp"
-            android:src="@drawable/home_icon_more"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:tint="@color/text_white" />
+
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -123,23 +112,70 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/pomodoroClockContainer" />
 
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/btnResetPomodoro"
+    <LinearLayout
+        android:id="@+id/layoutActiveButtons"
         android:layout_width="wrap_content"
-        android:layout_height="40dp"
-        android:layout_marginTop="12dp"
-        android:background="@drawable/bg_pomodoro_start_button"
-        android:paddingStart="24dp"
-        android:paddingEnd="24dp"
-        android:text="@string/pomodoro_reset"
-        android:textAllCaps="false"
-        android:textColor="@color/text_white"
-        android:textSize="14sp"
-        android:textStyle="bold"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:gravity="center"
+        android:orientation="horizontal"
         android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btnStartPomodoro" />
+        app:layout_constraintTop_toBottomOf="@id/pomodoroClockContainer">
+
+        <ImageButton
+            android:id="@+id/btnPausePomodoro"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="16dp"
+            android:background="@drawable/bg_pomodoro_start_button"
+            android:contentDescription="@string/pause_pomodoro"
+            android:padding="12dp"
+            android:src="@android:drawable/ic_media_pause"
+            app:tint="@color/text_white" />
+
+        <ImageButton
+            android:id="@+id/btnResumePomodoro"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="16dp"
+            android:background="@drawable/bg_pomodoro_start_button"
+            android:contentDescription="@string/continues_pomodoro"
+            android:padding="12dp"
+            android:src="@android:drawable/ic_media_play"
+            android:visibility="gone"
+            app:tint="@color/text_white" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnResetPomodoro"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginEnd="16dp"
+            android:background="@drawable/bg_pomodoro_start_button"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp"
+            android:text="@string/pomodoro_reset"
+            android:textAllCaps="false"
+            android:textColor="@color/text_white"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnCompletePomodoro"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_pomodoro_start_button"
+            android:paddingStart="32dp"
+            android:paddingEnd="32dp"
+            android:text="@string/finish_pomodoro"
+            android:textAllCaps="false"
+            android:textColor="@color/text_white"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
 
     <View
         android:id="@+id/viewDurationPickerScrim"

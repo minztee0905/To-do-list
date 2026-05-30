@@ -275,7 +275,7 @@ public class AddCategoryFragment extends BottomSheetDialogFragment {
                 }
 
                 Bundle result = new Bundle();
-                // Add mode doesn't have id yet (Firestore auto id).
+
                 result.putString(RESULT_KEY_CATEGORY_NAME, name);
                 result.putString(RESULT_KEY_CATEGORY_ICON, icon);
                 getParentFragmentManager().setFragmentResult(RESULT_KEY_ADD_CATEGORY, result);

@@ -62,7 +62,7 @@ public class EisenhowerTaskAdapter extends RecyclerView.Adapter<EisenhowerTaskAd
         holder.cbTask.setChecked(task.isCompleted());
 
         holder.cbTask.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            // Keep UI stable immediately
+
             task.setCompleted(isChecked);
             if (checkedChangeListener != null) {
                 checkedChangeListener.onTaskCheckedChanged(task, isChecked);

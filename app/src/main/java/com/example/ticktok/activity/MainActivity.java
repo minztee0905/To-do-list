@@ -138,7 +138,7 @@ public class MainActivity extends AppCompatActivity {
         setupSharedFab();
         setupDockNavigation();
 
-        // Ensure the correct icon is set after initial fragment transaction.
+
         updateTopLeftNavigationButton();
     }
 
@@ -153,7 +153,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // Delete tasks that were completed on previous days (run at most once per day).
+
         maybeRunDailyCompletedTaskCleanup();
 
         refreshCategories();
@@ -185,7 +185,7 @@ public class MainActivity extends AppCompatActivity {
 
         Set<String> deletedIds = new HashSet<>();
         deleteCompletedTasksBefore(tasksRef, todayStartDate, deletedIds, () -> {
-            // Extra safety: purge older completed tasks that might miss `completedAt`.
+
             purgeCompletedTasksWithoutTimestamp(tasksRef, "completed", todayStartDate, deletedIds, () ->
                     purgeCompletedTasksWithoutTimestamp(tasksRef, "isCompleted", todayStartDate, deletedIds, () ->
                             prefs.edit().putString(PREF_KEY_LAST_CLEANUP_DAY_PREFIX + uid, todayKey).apply()
@@ -221,7 +221,7 @@ public class MainActivity extends AppCompatActivity {
                                            @NonNull Date todayStart,
                                            @NonNull Set<String> deletedIds,
                                            @NonNull VoidCallback onDone) {
-        // Query only by `completedAt` to avoid composite indexes.
+
         Query q = tasksRef
                 .whereLessThan("completedAt", todayStart)
                 .orderBy("completedAt")
@@ -244,11 +244,11 @@ public class MainActivity extends AppCompatActivity {
                     batch.commit()
                             .addOnSuccessListener(unused -> deleteCompletedTasksBefore(tasksRef, todayStart, deletedIds, onDone))
                             .addOnFailureListener(error -> {
-                                // If we fail (offline, permission, etc.), don't mark prefs.
+
                             });
                 })
                 .addOnFailureListener(error -> {
-                    // Don't mark prefs on failure.
+
                 });
     }
 
@@ -257,7 +257,7 @@ public class MainActivity extends AppCompatActivity {
                                                      @NonNull Date todayStart,
                                                      @NonNull Set<String> deletedIds,
                                                      @NonNull VoidCallback onDone) {
-        // Some older docs might have boolean completion set but missing completedAt.
+
         tasksRef.whereEqualTo(completedField, true)
                 .limit(450)
                 .get()
@@ -280,7 +280,7 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     if (toDelete.isEmpty()) {
-                        // Nothing to delete in this batch; assume remaining are today-completed.
+
                         onDone.onDone();
                         return;
                     }
@@ -294,11 +294,11 @@ public class MainActivity extends AppCompatActivity {
                     batch.commit()
                             .addOnSuccessListener(unused -> purgeCompletedTasksWithoutTimestamp(tasksRef, completedField, todayStart, deletedIds, onDone))
                             .addOnFailureListener(error -> {
-                                // Don't mark prefs on failure.
+
                             });
                 })
                 .addOnFailureListener(error -> {
-                    // Don't mark prefs on failure.
+
                 });
     }
 
@@ -399,7 +399,7 @@ public class MainActivity extends AppCompatActivity {
                     int from = viewHolder.getBindingAdapterPosition();
                     int to = target.getBindingAdapterPosition();
 
-                    // Position 0 is reserved for the fixed Welcome category.
+
                     if (from == 0 || to == 0) {
                         return false;
                     }
@@ -409,7 +409,7 @@ public class MainActivity extends AppCompatActivity {
 
                 @Override
                 public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
-                    // no-op (we don't support swipe)
+
                 }
 
                 @Override
@@ -420,7 +420,7 @@ public class MainActivity extends AppCompatActivity {
 
                 @Override
                 public boolean isLongPressDragEnabled() {
-                    // Drag is started via the handle to avoid conflict with long-press edit/delete.
+
                     return false;
                 }
             };
@@ -446,7 +446,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // Skip the fixed Welcome category (virtual, not stored in Firestore).
+
         List<Category> mutable = new ArrayList<>();
         for (Category c : items) {
             if (c != null && !Category.ID_WELCOME.equals(c.getId())) {
@@ -464,7 +464,7 @@ public class MainActivity extends AppCompatActivity {
         categoryRepository.updateCategoryOrders(mutable, new CategoryRepositoryContract.OnCategorySavedListener() {
             @Override
             public void onSuccess() {
-                // Keep local cache consistent and refresh to ensure ordering is applied.
+
                 menuCategories.clear();
                 menuCategories.addAll(mutable);
                 refreshCategories();
@@ -610,12 +610,12 @@ public class MainActivity extends AppCompatActivity {
                 menuCategories.clear();
                 menuCategories.addAll(categories);
 
-                // Keep selectedCategoryId stable if we are currently on a category screen.
+
                 if (selectedCategoryId == null || selectedCategoryId.trim().isEmpty()) {
                     selectedCategoryId = resolveCategoryIdForTitle(normalizeTitle(selectedMenuTitle));
                 }
 
-                // Always show Welcome as the first (fixed) item.
+
                 List<Category> display = new ArrayList<>();
                 display.add(createWelcomeDrawerCategory());
                 display.addAll(menuCategories);
@@ -660,8 +660,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // If the user navigates via the drawer while a Welcome filter is open, clear that back stack
-        // so the top-left button returns to the menu icon and back won't jump to a stale filter.
+
         clearContentBackStackIfNeeded();
 
         if (Category.ID_WELCOME.equals(category.getId())) {
@@ -670,7 +669,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // Navigate by ID to avoid title collisions (e.g., a user category named "Welcome").
+
         selectedCategoryId = category.getId();
         selectedMenuTitle = normalizeTitle(category.getTitle());
         updateHeader(selectedMenuTitle);
@@ -693,7 +692,7 @@ public class MainActivity extends AppCompatActivity {
 
     @NonNull
     private Category createWelcomeDrawerCategory() {
-        // Virtual category: not stored in Firestore.
+
         return new Category(Category.ID_WELCOME, "🏠", getString(R.string.menu_welcome), 0);
     }
 
@@ -959,21 +958,18 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Navigate to a Category screen by Firestore categoryId.
-     * Used by Search results to jump directly to the category that contains a task.
-     */
+
     public void openCategoryById(@NonNull String categoryId) {
         openCategoryById(categoryId, null);
     }
 
-    /** Same as {@link #openCategoryById(String)} but optionally scrolls/highlights a specific task. */
+
     public void openCategoryById(@NonNull String categoryId, @Nullable String highlightTaskId) {
         if (categoryId.trim().isEmpty()) {
             return;
         }
 
-        // Prefer using the existing menu-based navigation so header/dock/chrome stay consistent.
+
         Category found = null;
         for (Category c : menuCategories) {
             if (c != null && c.getId() != null && c.getId().trim().equals(categoryId.trim())) {
@@ -988,7 +984,7 @@ public class MainActivity extends AppCompatActivity {
             selectedMenuTitle = normalizeTitle(found.getTitle());
             selectedCategoryId = categoryId.trim();
         } else {
-            // Fallback if categories aren't loaded yet or title can't be resolved.
+
             selectedMenuTitle = getString(R.string.menu_categories);
             selectedCategoryId = categoryId.trim();
         }
@@ -1139,10 +1135,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Allows child fragments (e.g., Welcome dashboard filters) to update the header title and chrome
-     * without having to go through the drawer menu selection logic.
-     */
+
     public void setScreenTitle(@NonNull String title) {
         selectedMenuTitle = normalizeTitle(title);
         // Filters are not tied to a single category.
@@ -1152,10 +1145,7 @@ public class MainActivity extends AppCompatActivity {
         updateDockSelection(selectedMenuTitle);
     }
 
-    /**
-     * Opens a fragment on top of the current stack and updates the header title accordingly.
-     * This is used by Welcome dashboard cards.
-     */
+
     public void openFragmentWithTitle(@NonNull Fragment fragment, @NonNull String title) {
         setScreenTitle(title);
         getSupportFragmentManager()

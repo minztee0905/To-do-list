@@ -93,7 +93,7 @@ public class TaskFilterFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        // Reuse the category list layout (RecyclerView + empty state).
+
         return inflater.inflate(R.layout.fragment_category, container, false);
     }
 
@@ -352,7 +352,7 @@ public class TaskFilterFragment extends Fragment {
 
         tasksRef.document(task.getId().trim())
                 .update(
-                        // Write both keys to be compatible with Firestore POJO mapping.
+
                         "isCompleted", isChecked,
                         "completed", isChecked,
                         "completedAt", isChecked ? FieldValue.serverTimestamp() : null

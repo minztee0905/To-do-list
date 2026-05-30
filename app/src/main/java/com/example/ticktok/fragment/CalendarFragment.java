@@ -251,7 +251,6 @@ public class CalendarFragment extends Fragment {
 
         tasksRef.document(task.getId().trim())
                 .update(
-                        // Write both keys to be compatible with Firestore POJO mapping.
                         "isCompleted", isChecked,
                         "completed", isChecked,
                         "completedAt", isChecked ? FieldValue.serverTimestamp() : null
@@ -311,7 +310,6 @@ public class CalendarFragment extends Fragment {
     }
 
     private void onEisenhowerTaskLongPressed(@NonNull View anchorView, @NonNull Task task) {
-        // Eisenhower item layout is compact (no 'more' icon), so we use long-press to show actions.
         PopupMenu popupMenu = new PopupMenu(requireContext(), anchorView, Gravity.END);
         popupMenu.getMenuInflater().inflate(R.menu.menu_task_actions, popupMenu.getMenu());
         popupMenu.setOnMenuItemClickListener(item -> handleTaskAction(item, task));
@@ -499,20 +497,16 @@ public class CalendarFragment extends Fragment {
 
             switch (task.getPriority()) {
                 case 3:
-                    // Priority 3 -> Quadrant I
                     q1.add(task);
                     break;
                 case 2:
-                    // Priority 2 -> Quadrant II
                     q2.add(task);
                     break;
                 case 1:
-                    // Priority 1 -> Quadrant III
                     q3.add(task);
                     break;
                 case 0:
                 default:
-                    // Priority 0 (or invalid) -> Quadrant IV
                     q4.add(task);
                     break;
             }

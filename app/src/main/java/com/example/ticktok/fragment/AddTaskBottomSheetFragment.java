@@ -199,7 +199,6 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
 
         ImageButton btnMore = view.findViewById(R.id.btnMore);
         if (btnMore != null) {
-            // Reminder: pick TIME only to avoid re-selecting the date (the date comes from dueDate).
             btnMore.setOnClickListener(v -> showReminderTimePicker());
             btnMore.setOnLongClickListener(v -> {
                 selectedReminderTime = 0L;
@@ -276,7 +275,6 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
                     selectedCalendar.set(year1, monthOfYear, dayOfMonth);
                     selectedDueDate = normalizeToStartOfDay(selectedCalendar.getTimeInMillis());
 
-                    // If a reminder time is already set, keep the same hour/minute but move it to the new date.
                     if (selectedReminderTime > 0) {
                         java.util.Calendar reminderCal = java.util.Calendar.getInstance();
                         reminderCal.setTimeInMillis(selectedReminderTime);
@@ -427,7 +425,7 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
 
         long reminderTimeValue = selectedReminderTime > 0 ? selectedReminderTime : 0L;
         if (reminderTimeValue > 0 && reminderTimeValue <= System.currentTimeMillis()) {
-            // Don't persist a reminder that can't actually fire.
+
             reminderTimeValue = 0L;
             selectedReminderTime = 0L;
             View root = getView();
@@ -489,8 +487,6 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
                                         @NonNull String description,
                                         @NonNull Long dueDateValue,
                                         long reminderTimeValue) {
-        // Use a time-based order to avoid Firestore composite-index requirements.
-        // (Drag & drop will later rewrite orders to 1..N anyway.)
         int nextOrder = (int) (System.currentTimeMillis() / 1000L);
         Task task = new Task(title, description, categoryId, selectedPriority, dueDateValue, reminderTimeValue, nextOrder);
         task.setCompleted(false);
@@ -502,7 +498,6 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
                 .addOnSuccessListener(documentReference -> {
                     documentReference.update("createdAt", FieldValue.serverTimestamp());
 
-                    // Schedule reminder after we have a stable Firestore doc id.
                     task.setId(documentReference.getId());
                     if (reminderTimeValue > System.currentTimeMillis()) {
                         ReminderManager.ensureNotificationPermission(requireActivity());
@@ -518,7 +513,7 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
     private void showReminderTimePicker() {
         restoreTaskInputFocus();
 
-        // Use dueDate as the reminder date to avoid selecting the date twice.
+
         long baseDate = selectedDueDate > 0
                 ? selectedDueDate
                 : getStartOfTodayMillis();
@@ -534,7 +529,6 @@ public class AddTaskBottomSheetFragment extends BottomSheetDialogFragment {
             initialHour = existing.get(java.util.Calendar.HOUR_OF_DAY);
             initialMinute = existing.get(java.util.Calendar.MINUTE);
         } else {
-            // Default to the next hour to reduce chances of picking a past time.
             java.util.Calendar now = java.util.Calendar.getInstance();
             initialHour = now.get(java.util.Calendar.HOUR_OF_DAY);
             initialMinute = now.get(java.util.Calendar.MINUTE);

@@ -16,9 +16,7 @@ import androidx.core.content.ContextCompat;
 
 import com.example.ticktok.model.Task;
 
-/**
- * Schedules local reminders for tasks using AlarmManager.
- */
+
 public final class ReminderManager {
 
     public static final String EXTRA_TASK_ID = "extra_task_id";
@@ -29,11 +27,7 @@ public final class ReminderManager {
     private ReminderManager() {
     }
 
-    /**
-     * Request POST_NOTIFICATIONS permission on Android 13+.
-     * <p>
-     * Note: call this from an Activity (or a Fragment via requireActivity()).
-     */
+
     public static void ensureNotificationPermission(@NonNull Activity activity) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             return;
@@ -49,14 +43,11 @@ public final class ReminderManager {
         );
     }
 
-    /**
-     * Set an exact reminder alarm based on {@link Task#getReminderTime()}.
-     * The reminder is only scheduled when reminderTime is in the future.
-     */
+
     public static void setReminder(@NonNull Context context, @NonNull Task task) {
         Long reminderTime = task.getReminderTime();
         if (reminderTime == null || reminderTime <= System.currentTimeMillis()) {
-            // If reminder is not valid, make sure old alarm is cancelled.
+
             if (task.getId() != null) {
                 cancelReminder(context, task.getId());
             }
@@ -75,10 +66,10 @@ public final class ReminderManager {
 
         PendingIntent pendingIntent = buildPendingIntent(context, taskId, task.getTitle());
 
-        // Replace any existing alarm for this task.
+
         alarmManager.cancel(pendingIntent);
 
-        // Exact alarms might be restricted on Android 12+.
+
         boolean canExact = true;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             canExact = alarmManager.canScheduleExactAlarms();
@@ -87,14 +78,12 @@ public final class ReminderManager {
         if (canExact) {
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminderTime, pendingIntent);
         } else {
-            // Fallback: still schedule, but the OS may batch it.
+
             alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminderTime, pendingIntent);
         }
     }
 
-    /**
-     * Cancel the reminder alarm associated with a task.
-     */
+
     public static void cancelReminder(@NonNull Context context, @NonNull String taskId) {
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarmManager == null) {

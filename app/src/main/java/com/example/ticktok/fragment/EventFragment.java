@@ -18,6 +18,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.ticktok.R;
 import com.example.ticktok.adapter.EventAdapter;
 import com.example.ticktok.model.Event;
+import com.example.ticktok.reminder.EventReminderManager;
+import com.example.ticktok.reminder.ReminderManager;
 import com.example.ticktok.util.UserFirestorePaths;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.CollectionReference;
@@ -123,6 +125,7 @@ public class EventFragment extends Fragment {
                 .delete()
                 .addOnSuccessListener(unused -> {
                     if (isAdded()) {
+                        EventReminderManager.cancelEventReminders(requireContext(), event.getId().trim());
                         Toast.makeText(requireContext(), R.string.delete_event_success, Toast.LENGTH_SHORT).show();
                     }
                 })
@@ -136,6 +139,7 @@ public class EventFragment extends Fragment {
     @Override
     public void onStart() {
         super.onStart();
+        ReminderManager.ensureNotificationPermission(requireActivity());
         startEventListener();
     }
 
@@ -180,6 +184,11 @@ public class EventFragment extends Fragment {
                     List<Event> events = mapSnapshotToEvents(snapshot);
                     eventAdapter.submitList(events);
                     showEmptyState(events.isEmpty());
+
+
+                    for (Event event : events) {
+                        EventReminderManager.setEventReminders(requireContext(), event);
+                    }
                 });
     }
 
