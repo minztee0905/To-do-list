@@ -149,7 +149,7 @@ public class SettingsActivity extends AppCompatActivity {
     private void showAppInfoDialog() {
         new AlertDialog.Builder(this)
                 .setTitle("Thông tin ứng dụng")
-                .setMessage("Ứng dụng: TickTok\nPhiên bản: 1.0.0\nTác giả: Trần Minh Triết\n\nChúc bạn có những giờ phút tập trung hiệu quả và hoàn thành tốt dự án 100 days 1000 hours!")
+                .setMessage("Ứng dụng: TickTok\nPhiên bản: 1.0.0\nTác giả: Nhóm 6\n\nChúc bạn có những giờ phút tập trung và hiệu quả với TickTok!")
                 .setPositiveButton("Đóng", (dialog, which) -> dialog.dismiss())
                 .show();
     }

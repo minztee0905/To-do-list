@@ -12,6 +12,7 @@ import android.widget.Toast;
 import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.ticktok.R;
@@ -78,6 +79,7 @@ public class LoginActivity extends AppCompatActivity {
         etPassword = findViewById(R.id.etPassword);
         btnLogin = findViewById(R.id.btnLogin);
         btnGoogleSignIn = findViewById(R.id.btnGoogleSignIn);
+        TextView tvForgotPassword = findViewById(R.id.tvForgotPassword);
         TextView tvSignUpNow = findViewById(R.id.tvSignUpNow);
 
         String webClientId = getString(R.string.default_web_client_id).trim();
@@ -106,6 +108,10 @@ public class LoginActivity extends AppCompatActivity {
             });
         }
 
+        if (tvForgotPassword != null) {
+            tvForgotPassword.setOnClickListener(v -> showContactAdminDialog());
+        }
+
         if (btnGoogleSignIn != null) {
             btnGoogleSignIn.setOnClickListener(v -> startGoogleSignIn());
             if (!isGoogleSignInConfigured) {
@@ -114,6 +120,15 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         setupKeyboardDismissBehavior();
+    }
+
+    private void showContactAdminDialog() {
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Quên mật khẩu?")
+                .setMessage("Vui lòng chụp màn hình và liên hệ Admin hệ thống qua Zalo: 0909090808 để được cấp lại mật khẩu!")
+                .setPositiveButton("Đã hiểu", (d, which) -> d.dismiss())
+                .create();
+        dialog.show();
     }
 
     @Override
