@@ -72,8 +72,6 @@ public class FocusStatisticsActivity extends AppCompatActivity {
         public void run() {
 
             lastLoadedDayKey = getTodayKey();
-            // At midnight, the underlying data may not change, but the way we group it (today/week)
-            // must be recalculated.
             if (lastSnapshot != null) {
                 handlePomodoroSnapshot(lastSnapshot);
             } else {
@@ -144,7 +142,6 @@ public class FocusStatisticsActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        // Ensure UI auto-updates when new sessions are saved.
         loadPomodoroData();
     }
 
