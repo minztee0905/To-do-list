@@ -82,6 +82,9 @@
     <string name="add_task_more">Thêm tùy chọn</string>
     <string name="add_task_mic">Micro</string>
     <string name="add_task_send">Gửi Task</string>
+    <string name="voice_prompt">Nói nội dung công việc…</string>
+    <string name="voice_not_supported">Thiết bị không hỗ trợ nhập bằng giọng nói</string>
+    <string name="voice_permission_denied">Bạn cần cho phép Micro để nhập bằng giọng nói</string>
     <string name="search_hint">Bạn muốn tìm gì?</string>
     <string name="search_clear">Xóa tìm kiếm</string>
     <string name="search_empty_hint">Nhập từ khóa để tìm công việc</string>
@@ -215,7 +218,7 @@
     <string name="delete_event_success">Đã xoá sự kiện</string>
     <string name="delete_event_failed">Xoá sự kiện thất bại</string>
 
-    <!-- Local notifications -->
+
     <string name="notification_task_reminder_body">Đến giờ làm task này rồi</string>
     <string name="notification_task_reminder_channel_description">Nhắc nhở theo thời gian bạn đặt cho từng task</string>
     <string name="notification_event_reminder_body_one_day_before">Ngày mai có sự kiện của bạn</string>
@@ -224,6 +227,10 @@
 
     <string name="reminder_cleared">Đã xoá nhắc nhở</string>
     <string name="reminder_time_in_past_cleared">Thời gian nhắc nhở đã qua, mình đã bỏ nhắc nhở</string>
+    <string name="reminder_pick_date">Chọn ngày nhắc</string>
+    <string name="reminder_pick_time">Chọn giờ nhắc</string>
+    <string name="reminder_clear">Xoá nhắc</string>
+    <string name="reminder_after_due_date_cleared">Thời gian nhắc phải trước hoặc trong ngày đến hạn</string>
     <string name="pause_pomodoro">Dừng</string>
     <string name="continues_pomodoro">Tiếp tục</string>
     <string name="finish_pomodoro">Hoàn thành</string>
