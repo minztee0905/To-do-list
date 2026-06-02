@@ -4,9 +4,19 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.media.AudioAttributes;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.SystemClock;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.os.VibratorManager;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -58,6 +68,7 @@ public class PomodoroFragment extends Fragment {
     private static final String STATE_TOTAL_MILLIS = "state_total_millis";
     private static final String STATE_REMAINING_MILLIS = "state_remaining_millis";
     private static final String STATE_IS_RUNNING = "state_is_running";
+            private static final long FINISH_ALERT_DURATION_MS = 1000L;
     private static final String STATE_IS_PAUSED = "state_is_paused";
     private static final String STATE_SELECTED_FOCUS_MILLIS = "state_selected_focus_millis";
     private static final String STATE_SELECTED_TASK_ID = "state_selected_task_id";
@@ -339,9 +350,87 @@ public class PomodoroFragment extends Fragment {
             public void onFinish() {
                 remainingMillis = 0L;
                 renderTimerUI();
+                playTimerFinishedAlert();
                 onSessionCompleted();
             }
         }.start();
+    }
+
+    private void playTimerFinishedAlert() {
+        Context context = getContext();
+        if (context == null) {
+            return;
+        }
+
+        vibrateOnce(context);
+        playAlarmSoundOnce(context);
+    }
+
+    private void vibrateOnce(@NonNull Context context) {
+        try {
+            Vibrator vibrator = null;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                VibratorManager vm = (VibratorManager) context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+                if (vm != null) {
+                    vibrator = vm.getDefaultVibrator();
+                }
+            } else {
+                vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+            }
+
+            if (vibrator == null || !vibrator.hasVibrator()) {
+                return;
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(FINISH_ALERT_DURATION_MS, VibrationEffect.DEFAULT_AMPLITUDE));
+            } else {
+                // noinspection deprecation
+                vibrator.vibrate(FINISH_ALERT_DURATION_MS);
+            }
+        } catch (RuntimeException ignored) {
+        }
+    }
+
+    private void playAlarmSoundOnce(@NonNull Context context) {
+        try {
+            Uri uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+            if (uri == null) {
+                uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            }
+            if (uri == null) {
+                return;
+            }
+
+            final Ringtone ringtone = RingtoneManager.getRingtone(context, uri);
+            if (ringtone == null) {
+                return;
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                ringtone.setAudioAttributes(
+                        new AudioAttributes.Builder()
+                                .setUsage(AudioAttributes.USAGE_ALARM)
+                                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                                .build()
+                );
+            }
+
+            ringtone.play();
+
+            new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        if (ringtone.isPlaying()) {
+                            ringtone.stop();
+                        }
+                    } catch (RuntimeException ignored) {
+                    }
+                }
+            }, FINISH_ALERT_DURATION_MS);
+        } catch (RuntimeException ignored) {
+        }
     }
 
     private void pauseTimer() {
@@ -357,6 +446,10 @@ public class PomodoroFragment extends Fragment {
         isPaused = false;
 
         if (currentMode == SessionMode.FOCUS) {
+            // When focus naturally ends (timer reaches 0), persist a history entry.
+            // (Previously we only saved when the user pressed the Complete button.)
+            // Show a toast so users can confirm it was saved.
+            savePomodoroHistory(totalMillis, false, true);
             currentMode = SessionMode.BREAK;
             totalMillis = BREAK_DURATION_MILLIS;
             remainingMillis = BREAK_DURATION_MILLIS;
@@ -446,22 +539,34 @@ public class PomodoroFragment extends Fragment {
     }
 
     private void savePomodoroHistoryAndReset() {
-        if (!isAdded()) {
-            return;
-        }
+        savePomodoroHistory(totalMillis, true, true);
+    }
+
+    private void savePomodoroHistory(long durationMillis,
+                                    boolean resetAfterSave,
+                                    boolean showSuccessToast) {
+        // We intentionally do NOT require the Fragment to be "added" here.
+        // The timer may finish while the activity is backgrounded or another activity is on top.
+        // In those cases, we still want to persist the history entry.
+        @Nullable Context context = getContext();
 
         String uid = UserFirestorePaths.getCurrentUid();
         if (uid == null) {
-            Toast.makeText(requireContext(), getString(R.string.auth_error_login_required), Toast.LENGTH_SHORT).show();
-            handleResetButtonClick();
+            // Silent skip for auto-save; for manual save we still reset to avoid getting stuck.
+            if (resetAfterSave) {
+                if (context != null) {
+                    Toast.makeText(context, context.getString(R.string.auth_error_login_required), Toast.LENGTH_SHORT).show();
+                }
+                handleResetButtonClick();
+            }
             return;
         }
 
         String taskName = !TextUtils.isEmpty(selectedTaskTitle)
                 ? selectedTaskTitle
-                : getString(R.string.pomodoro_title);
+                : (context != null ? context.getString(R.string.pomodoro_title) : "Pomodoro");
 
-        long durationMinutes = Math.max(1L, totalMillis / 60_000L);
+        long durationMinutes = Math.max(1L, durationMillis / 60_000L);
         long timestamp = System.currentTimeMillis();
 
         Map<String, Object> payload = new HashMap<>();
@@ -476,19 +581,22 @@ public class PomodoroFragment extends Fragment {
                 .collection("pomodoro")
                 .add(payload)
                 .addOnSuccessListener(ref -> {
-                    if (!isAdded()) {
-                        return;
+                    if (showSuccessToast) {
+                        if (context != null) {
+                            Toast.makeText(context, context.getString(R.string.pomodoro_history_saved), Toast.LENGTH_SHORT).show();
+                        }
                     }
-                    Toast.makeText(requireContext(), getString(R.string.pomodoro_history_saved), Toast.LENGTH_SHORT).show();
-                    handleResetButtonClick();
+                    if (resetAfterSave) {
+                        handleResetButtonClick();
+                    }
                 })
                 .addOnFailureListener(e -> {
-                    if (!isAdded()) {
-                        return;
+                    if (context != null) {
+                        Toast.makeText(context, context.getString(R.string.pomodoro_history_save_failed), Toast.LENGTH_SHORT).show();
                     }
-                    Toast.makeText(requireContext(), getString(R.string.pomodoro_history_save_failed), Toast.LENGTH_SHORT).show();
-
-                    handleResetButtonClick();
+                    if (resetAfterSave) {
+                        handleResetButtonClick();
+                    }
                 });
     }
 

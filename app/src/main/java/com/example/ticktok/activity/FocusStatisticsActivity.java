@@ -11,6 +11,7 @@ import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -32,6 +33,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
 
@@ -58,13 +60,25 @@ public class FocusStatisticsActivity extends AppCompatActivity {
     @NonNull
     private String lastLoadedDayKey = "";
 
+    @Nullable
+    private ListenerRegistration pomodoroRegistration;
+
+    @Nullable
+    private QuerySnapshot lastSnapshot;
+
     private final Handler dayChangeHandler = new Handler(Looper.getMainLooper());
     private final Runnable dayChangeRunnable = new Runnable() {
         @Override
         public void run() {
 
             lastLoadedDayKey = getTodayKey();
-            loadPomodoroData();
+            // At midnight, the underlying data may not change, but the way we group it (today/week)
+            // must be recalculated.
+            if (lastSnapshot != null) {
+                handlePomodoroSnapshot(lastSnapshot);
+            } else {
+                loadPomodoroData();
+            }
             scheduleNextMidnightRefresh();
         }
     };
@@ -117,10 +131,30 @@ public class FocusStatisticsActivity extends AppCompatActivity {
         String todayKey = getTodayKey();
         if (!todayKey.equals(lastLoadedDayKey)) {
             lastLoadedDayKey = todayKey;
-            loadPomodoroData();
+            if (lastSnapshot != null) {
+                handlePomodoroSnapshot(lastSnapshot);
+            } else {
+                loadPomodoroData();
+            }
         }
 
         scheduleNextMidnightRefresh();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        // Ensure UI auto-updates when new sessions are saved.
+        loadPomodoroData();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (pomodoroRegistration != null) {
+            pomodoroRegistration.remove();
+            pomodoroRegistration = null;
+        }
     }
 
     @Override
@@ -197,20 +231,29 @@ public class FocusStatisticsActivity extends AppCompatActivity {
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
+        if (pomodoroRegistration != null) {
+            return;
+        }
 
-        db.collection("users")
+        pomodoroRegistration = db.collection("users")
                 .document(uid)
                 .collection("pomodoro")
                 .orderBy("timestamp", Query.Direction.DESCENDING)
                 .limit(300)
-                .get()
-                .addOnSuccessListener(this::handlePomodoroSnapshot)
-                .addOnFailureListener(e ->
-                        Toast.makeText(this, getString(R.string.focus_stats_load_failed), Toast.LENGTH_SHORT).show()
-                );
+                .addSnapshotListener((snapshot, error) -> {
+                    if (error != null) {
+                        Toast.makeText(this, getString(R.string.focus_stats_load_failed), Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (snapshot == null) {
+                        return;
+                    }
+                    handlePomodoroSnapshot(snapshot);
+                });
     }
 
     private void handlePomodoroSnapshot(@NonNull QuerySnapshot snapshot) {
+        lastSnapshot = snapshot;
         List<PomodoroSession> sessions = new ArrayList<>();
         for (DocumentSnapshot doc : snapshot.getDocuments()) {
             PomodoroSession s = doc.toObject(PomodoroSession.class);
